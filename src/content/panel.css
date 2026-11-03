@@ -1,4 +1,5 @@
 /* Styles für alles, was Anzeigenkiste in fremde Seiten einblendet. Alles mit ak- präfixiert. */
+.ak-panel [hidden], .ak-progress[hidden] { display: none !important; }
 .ak-panel, .ak-toast, .ak-inline, .ak-floating, .ak-templates {
   --ak-bg: #fffdf8;
   --ak-ink: #1f2a24;

@@ -82,17 +82,32 @@
     await local().set({ templates });
   }
 
-  async function setPending(pending) {
-    await local().set({ pending: pending ? { ...pending, at: Date.now() } : null });
+  // Offene Aufträge je Plattform, damit mehrere Tabs gleichzeitig ausgefüllt werden können.
+  // pending = { [platform]: { adId, at } }, platform z. B. "kleinanzeigen", "vinted", "facebook"
+  const PENDING_TTL = 15 * 60 * 1000;
+
+  async function setPending(platform, adId) {
+    const { pending } = await local().get("pending");
+    const next = pending && typeof pending === "object" && !pending.action ? pending : {};
+    next[platform] = { adId, at: Date.now() };
+    await local().set({ pending: next });
   }
 
-  // Liefert eine offene Aktion, sofern sie jünger als 10 Minuten ist, und löscht sie danach.
-  async function takePending(filter) {
+  // Liest einen offenen Auftrag, ohne ihn zu verbrauchen.
+  async function peekPending(platform) {
     const { pending } = await local().get("pending");
-    if (!pending || Date.now() - pending.at > 10 * 60 * 1000) return null;
-    if (filter && !filter(pending)) return null;
-    await local().set({ pending: null });
-    return pending;
+    const p = pending?.[platform];
+    return p && Date.now() - p.at < PENDING_TTL ? p : null;
+  }
+
+  // Liefert den offenen Auftrag und löscht ihn.
+  async function takePending(platform) {
+    const p = await peekPending(platform);
+    if (!p) return null;
+    const { pending } = await local().get("pending");
+    delete pending[platform];
+    await local().set({ pending });
+    return p;
   }
 
   async function exportBackup() {
@@ -115,7 +130,7 @@
 
   AK.store = {
     uid, getAds, getAdList, getAd, saveAd, deleteAd,
-    getTemplates, setTemplates, setPending, takePending,
+    getTemplates, setTemplates, setPending, peekPending, takePending,
     exportBackup, importBackup, DEFAULT_TEMPLATES
   };
 })();

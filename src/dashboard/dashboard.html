@@ -101,9 +101,25 @@
     </form>
   </dialog>
 
+  <!-- Inserieren auf mehreren Plattformen -->
+  <dialog id="publish" class="dialog">
+    <form method="dialog">
+      <h2>Inserieren auf …</h2>
+      <p class="muted" id="publish-ad"></p>
+      <div id="publish-list" class="checks"></div>
+      <p class="muted small">Für jede Plattform öffnet sich ein Tab mit ausgefülltem Formular, inklusive Bildern.
+        Kategorie prüfen und selbst veröffentlichen. Bei markt.de und Quoka klickst du zuerst auf „Anzeige aufgeben“.</p>
+      <div class="row row--end">
+        <button value="cancel" class="btn">Abbrechen</button>
+        <button value="go" class="btn btn--primary">Tabs öffnen und ausfüllen</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="../lib/api.js"></script>
   <script src="../lib/storage.js"></script>
   <script src="../lib/dom.js"></script>
+  <script src="../lib/platforms.js"></script>
   <script src="dashboard.js"></script>
 </body>
 </html>

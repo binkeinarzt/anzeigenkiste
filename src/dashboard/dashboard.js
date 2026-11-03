@@ -4,13 +4,6 @@
   const { h, formatPrice } = AK.dom;
   const api = AK.api;
 
-  const REINSERT_URL = "https://www.kleinanzeigen.de/p-anzeige-aufgeben-schritt2.html";
-  const EXPORT_URLS = {
-    de: { vinted: "https://www.vinted.de/items/new", ebay: "https://www.ebay.de/sl/prelist/suggest", willhaben: "https://www.willhaben.at/iad/anzeigenaufgabe" },
-    at: { vinted: "https://www.vinted.at/items/new", ebay: "https://www.ebay.at/sl/prelist/suggest", willhaben: "https://www.willhaben.at/iad/anzeigenaufgabe" }
-  };
-  const PLATFORMS = [["vinted", "Vinted"], ["ebay", "eBay"], ["willhaben", "willhaben"]];
-
   const $ = (s) => document.querySelector(s);
   let ads = [];
   let country = "de";
@@ -38,29 +31,36 @@
     );
   }
 
-  function closeMenus() { document.querySelectorAll(".menu__list").forEach((m) => m.remove()); }
-  document.addEventListener("click", (e) => { if (!e.target.closest(".menu")) closeMenus(); });
-
-  async function go(action, ad, platform) {
-    await AK.store.setPending({ action, adId: ad.id, platform });
-    const url = action === "reinsert" ? REINSERT_URL : EXPORT_URLS[country][platform];
-    await api.tabs.create({ url });
+  // Inserieren: öffnet je gewählter Plattform einen Tab mit dem Formular, das die Erweiterung dort ausfüllt.
+  async function go(platform, ad, active = true) {
+    await AK.store.setPending(platform, ad.id);
+    await api.tabs.create({ url: AK.platforms[platform].start[country], active });
   }
 
-  function exportMenu(ad) {
-    const wrap = h("div", { class: "menu" });
-    const btn = h("button", { class: "btn btn--sm", type: "button" }, "Übertragen ▾");
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const open = wrap.querySelector(".menu__list");
-      closeMenus();
-      if (open) return;
-      wrap.append(h("div", { class: "menu__list" },
-        PLATFORMS.map(([key, label]) => h("button", { type: "button", onclick: () => go("export", ad, key) }, `Zu ${label}`))));
-    });
-    wrap.append(btn);
-    return wrap;
+  const pubDialog = $("#publish");
+  let pubAd = null;
+
+  async function openPublish(ad) {
+    pubAd = ad;
+    const { lastTargets } = await api.storage.local.get("lastTargets");
+    const chosen = new Set(lastTargets || ["kleinanzeigen"]);
+    $("#publish-ad").textContent = ad.title;
+    $("#publish-list").replaceChildren(...Object.entries(AK.platforms).map(([key, p]) =>
+      h("label", { class: "check" },
+        h("input", { type: "checkbox", id: `pub-${key}`, value: key, checked: chosen.has(key) }),
+        h("span", {}, p.label),
+        ad.source === key ? h("span", { class: "tag" }, "Herkunft") : null)));
+    pubDialog.returnValue = "";
+    pubDialog.showModal();
   }
+
+  pubDialog.addEventListener("close", async () => {
+    if (pubDialog.returnValue !== "go" || !pubAd) return;
+    const targets = [...pubDialog.querySelectorAll("#publish-list input:checked")].map((i) => i.value);
+    if (!targets.length) return;
+    await api.storage.local.set({ lastTargets: targets });
+    for (const [i, t] of targets.entries()) await go(t, pubAd, i === 0);
+  });
 
   function renderList() {
     const q = $("#search").value.trim().toLowerCase();
@@ -85,6 +85,7 @@
             h("span", { class: "price" }, formatPrice(ad)),
             ad.category?.length ? h("span", {}, ad.category[ad.category.length - 1]) : null,
             ad.location ? h("span", {}, ad.location) : null,
+            ad.source && AK.platforms[ad.source] ? h("span", {}, `von ${AK.platforms[ad.source].label}`) : null,
             ad.stats?.views != null ? h("span", { title: `Stand ${fmtDate(ad.stats.updatedAt)}` }, `${num(ad.stats.views)} Aufrufe`) : null,
             h("span", {}, `${ad.images?.length || 0} Bilder`),
             h("span", {}, `gesichert ${fmtDate(ad.savedAt)}`),
@@ -92,8 +93,7 @@
           )
         ),
         h("div", { class: "actions" },
-          h("button", { class: "btn btn--sm btn--primary", type: "button", onclick: () => go("reinsert", ad) }, "Neu inserieren"),
-          exportMenu(ad),
+          h("button", { class: "btn btn--sm btn--primary", type: "button", onclick: () => openPublish(ad) }, "Inserieren …"),
           h("button", { class: "btn btn--sm", type: "button", onclick: () => openEditor(ad) }, "Bearbeiten"),
           ad.url ? h("a", { class: "btn btn--sm", href: ad.url, target: "_blank", rel: "noopener" }, "Original") : null,
           h("button", {

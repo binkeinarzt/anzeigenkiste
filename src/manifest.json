@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Anzeigenkiste",
   "short_name": "Anzeigenkiste",
-  "version": "0.1.0",
-  "description": "Open Source: Kleinanzeigen-Anzeigen sichern, neu inserieren, Textvorlagen nutzen und zu Vinted, eBay oder willhaben übertragen. Alles lokal, kostenlos.",
+  "version": "0.2.0",
+  "description": "Open Source: Anzeigen sichern, neu inserieren und zwischen Kleinanzeigen, Vinted, eBay, willhaben, Facebook, markt.de und Quoka übertragen. Alles lokal, kostenlos.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -21,18 +21,29 @@
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["storage", "unlimitedStorage"],
+  "permissions": [
+    "storage",
+    "unlimitedStorage"
+  ],
   "host_permissions": [
     "https://*.kleinanzeigen.de/*",
     "https://*.vinted.de/*",
     "https://*.vinted.at/*",
+    "https://*.vinted.net/*",
     "https://*.ebay.de/*",
     "https://*.ebay.at/*",
-    "https://*.willhaben.at/*"
+    "https://*.ebayimg.com/*",
+    "https://*.willhaben.at/*",
+    "https://www.facebook.com/*",
+    "https://*.fbcdn.net/*",
+    "https://*.markt.de/*",
+    "https://*.quoka.de/*"
   ],
   "content_scripts": [
     {
-      "matches": ["https://www.kleinanzeigen.de/*"],
+      "matches": [
+        "https://www.kleinanzeigen.de/*"
+      ],
       "js": [
         "lib/api.js",
         "lib/storage.js",
@@ -41,7 +52,9 @@
         "lib/parse.js",
         "content/kleinanzeigen.js"
       ],
-      "css": ["content/panel.css"],
+      "css": [
+        "content/panel.css"
+      ],
       "run_at": "document_idle"
     },
     {
@@ -50,15 +63,23 @@
         "https://www.vinted.at/*",
         "https://www.ebay.de/*",
         "https://www.ebay.at/*",
-        "https://www.willhaben.at/*"
+        "https://www.willhaben.at/*",
+        "https://www.facebook.com/marketplace/*",
+        "https://www.markt.de/*",
+        "https://www.quoka.de/*"
       ],
       "js": [
         "lib/api.js",
         "lib/storage.js",
         "lib/dom.js",
-        "content/export.js"
+        "lib/platforms.js",
+        "lib/parse-product.js",
+        "content/export.js",
+        "content/import.js"
       ],
-      "css": ["content/panel.css"],
+      "css": [
+        "content/panel.css"
+      ],
       "run_at": "document_idle"
     }
   ],

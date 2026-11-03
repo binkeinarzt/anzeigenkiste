@@ -113,7 +113,7 @@
   }
 
   async function initPostPage() {
-    const pending = await AK.store.takePending((p) => p.action === "reinsert");
+    const pending = await AK.store.takePending("kleinanzeigen");
     const ads = await AK.store.getAdList();
     if (!ads.length) return;
 

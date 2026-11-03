@@ -1,6 +1,6 @@
 # Anzeigenkiste
 
-Freie Browsererweiterung für alle, die auf Kleinanzeigen verkaufen. Anzeigen sichern, neu inserieren, Textvorlagen im Postfach nutzen und Anzeigen zu Vinted, eBay oder willhaben übertragen.
+Freie Browsererweiterung für alle, die auf Kleinanzeigen verkaufen. Anzeigen sichern, neu inserieren, Textvorlagen im Postfach nutzen und Anzeigen zwischen Kleinanzeigen, Vinted, eBay, willhaben, Facebook Marketplace, markt.de und Quoka übertragen.
 
 **Open Source (MIT) · ohne Konto · ohne Abo · alle Daten bleiben lokal im Browser**
 
@@ -12,8 +12,8 @@ Freie Browsererweiterung für alle, die auf Kleinanzeigen verkaufen. Anzeigen si
 |---|---|---|
 | Anzeige sichern | jede Anzeige (`/s-anzeige/…`) | Knopf „In Anzeigenkiste speichern“ sichert Titel, Text, Preis, Kategorie, Merkmale und Bilder |
 | Alle sichern | „Meine Anzeigen“ | Panel sichert alle sichtbaren Anzeigen nacheinander (bewusst gedrosselt) |
-| Neu inserieren | Dashboard → „Neu inserieren“ | öffnet „Anzeige aufgeben“ und füllt Titel, Beschreibung, Preis, Preisart und Bilder aus |
-| Übertragen | Dashboard → „Übertragen“ | öffnet das Verkaufsformular von Vinted, eBay oder willhaben, füllt aus, Kopier-Knöpfe als Rückfall |
+| Inserieren | Dashboard → „Inserieren …“ | Plattformen ankreuzen (Kleinanzeigen, Vinted, eBay, willhaben, Facebook, markt.de, Quoka). Je Plattform öffnet sich ein Tab, das Formular wird mit Titel, Text, Preis und Bildern ausgefüllt. Kopier-Knöpfe als Rückfall |
+| Gegenrichtung | Artikelseiten auf Vinted, eBay, willhaben | Knopf „In Anzeigenkiste speichern“ liest den Artikel aus (JSON-LD, sonst Open Graph) |
 | Textvorlagen | Postfach (`/m-nachrichten…`) | Vorlagen-Chips über dem Nachrichtenfeld, Klick fügt Text ein |
 | Übersicht | Dashboard | Liste mit Aufrufen, Preis, Ort, Schlagwörtern; Suche, Sortierung, Bearbeiten, eigene Anzeigen anlegen |
 | Sicherung | Dashboard → Einstellungen | Export/Import der ganzen Kiste als JSON |
@@ -41,10 +41,13 @@ src/
     storage.js           Anzeigen, Vorlagen, offene Aktionen (storage.local)
     dom.js               Felder befüllen (React-sicher), Dateien einfügen, Panel, Toasts
     selectors.js         ALLE Kleinanzeigen-Selektoren an einer Stelle
-    parse.js             liest eine Anzeigen-Detailseite aus
+    parse.js             liest eine Kleinanzeigen-Detailseite aus
+    platforms.js         Zielplattformen: Startseite, Formularfelder, Artikelseiten
+    parse-product.js     liest Artikelseiten anderer Plattformen aus
   content/
     kleinanzeigen.js     Speichern, Meine Anzeigen, Formular ausfüllen, Textvorlagen
-    export.js            Panel für Vinted, eBay, willhaben
+    export.js            füllt Formulare auf Vinted, eBay, willhaben, Facebook, markt.de, Quoka
+    import.js            speichert Artikel von Vinted, eBay, willhaben in die Kiste
     panel.css
   dashboard/             Übersicht, Editor, Vorlagen, Einstellungen
   popup/
@@ -56,8 +59,9 @@ test/                    Parser-Test (jsdom) und E2E-Test (echtes Chrome)
 
 ```bash
 npm test             # Parser gegen test/fixture-ad.html
-npm run test:e2e     # baut, startet Chrome mit der Erweiterung, testet Speichern → Dashboard →
-                     # Bearbeiten → Neu inserieren → Textvorlage → Export zu Vinted
+npm run test:e2e     # baut, startet Chrome mit der Erweiterung und testet: Speichern → Dashboard →
+                     # Bearbeiten → Inserieren-Dialog → Kleinanzeigen, Vinted, Facebook, Quoka →
+                     # Textvorlage → Artikel von Vinted holen
 ```
 
 Der E2E-Test fängt die Kleinanzeigen- und Vinted-Seiten ab und liefert nachgebaute Formulare. Ob die Selektoren auf den echten Seiten passen, muss man live prüfen.
@@ -65,7 +69,7 @@ Der E2E-Test fängt die Kleinanzeigen- und Vinted-Seiten ab und liefert nachgeba
 ## Wenn eine Plattform ihr Layout ändert
 
 - Kleinanzeigen: nur `src/lib/selectors.js` anpassen. Jeder Eintrag ist eine Liste, der erste Treffer gewinnt.
-- Vinted, eBay, willhaben: `FIELDS` oben in `src/content/export.js`. Greift nichts, sucht eine Heuristik nach Feldern mit „Titel“, „Beschreibung“, „Preis“.
+- Andere Plattformen: `fields` in `src/lib/platforms.js`. Für markt.de und Quoka sind nur Heuristiken hinterlegt, weil die Formulare nicht öffentlich einsehbar sind. Dort öffnet sich die Startseite; sobald der Nutzer das Formular öffnet, füllt die Kiste es aus. Greift nichts, sucht eine Heuristik nach Feldern mit „Titel“, „Beschreibung“, „Preis“.
 
 ## Veröffentlichen
 
