@@ -73,11 +73,11 @@ Der E2E-Test fängt die Kleinanzeigen- und Vinted-Seiten ab und liefert nachgeba
 
 ## Veröffentlichen
 
-1. Projektnamen und `DEIN-NAME` in `site/page.html` ersetzen, Firefox-ID in `scripts/build.mjs` setzen.
-2. `npm run build`
-3. Chrome Web Store: `dist/anzeigenkiste-chrome-*.zip` hochladen (einmalig 5 USD Entwicklergebühr).
-4. addons.mozilla.org: `dist/anzeigenkiste-firefox-*.zip` hochladen (kostenlos).
-5. Landingpage: GitHub Pages auf den Ordner `site/` zeigen lassen.
+1. `npm run build`
+2. Chrome Web Store: `dist/anzeigenkiste-chrome-*.zip` hochladen (einmalig 5 USD Entwicklergebühr).
+3. addons.mozilla.org: `dist/anzeigenkiste-firefox-*.zip` hochladen (kostenlos).
+4. Landingpage: Der Workflow `.github/workflows/pages.yml` veröffentlicht sie. Einmalig unter Settings → Pages als Quelle „GitHub Actions“ wählen, dann liegt sie unter https://binkeinarzt.github.io/anzeigenkiste/
+5. Releases: Ein Tag wie `v0.3.0` pushen, der Workflow `release.yml` hängt die Zips für Chrome und Firefox an.
 
 ## Rechtliches
 

@@ -23,7 +23,7 @@ const targets = {
     background: { scripts: ["background.js"] },
     browser_specific_settings: {
       gecko: {
-        id: "anzeigenkiste@example.org", // vor dem Upload zu addons.mozilla.org durch eigene ID ersetzen
+        id: "anzeigenkiste@binkeinarzt.github.io", // vor dem Upload zu addons.mozilla.org durch eigene ID ersetzen
         strict_min_version: "121.0",
         data_collection_permissions: { required: ["none"] } // es werden keine Daten gesammelt
       }
