@@ -21,6 +21,13 @@ api.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         }
         return out;
       }
+      case "fetchText": {
+        // Nur für eBay-Beschreibungen (eigener Frame auf ebaydesc.com)
+        const u = new URL(msg.url);
+        if (!/(^|\.)ebaydesc\.com$/.test(u.hostname)) return null;
+        const res = await fetch(u, { credentials: "omit" });
+        return res.ok ? await res.text() : null;
+      }
       case "openTab":
         await api.tabs.create({ url: msg.url });
         return true;
