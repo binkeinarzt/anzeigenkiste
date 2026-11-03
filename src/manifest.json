@@ -1,0 +1,69 @@
+{
+  "manifest_version": 3,
+  "name": "Anzeigenkiste",
+  "short_name": "Anzeigenkiste",
+  "version": "0.1.0",
+  "description": "Open Source: Kleinanzeigen-Anzeigen sichern, neu inserieren, Textvorlagen nutzen und zu Vinted, eBay oder willhaben übertragen. Alles lokal, kostenlos.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Anzeigenkiste",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["storage", "unlimitedStorage"],
+  "host_permissions": [
+    "https://*.kleinanzeigen.de/*",
+    "https://*.vinted.de/*",
+    "https://*.vinted.at/*",
+    "https://*.ebay.de/*",
+    "https://*.ebay.at/*",
+    "https://*.willhaben.at/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.kleinanzeigen.de/*"],
+      "js": [
+        "lib/api.js",
+        "lib/storage.js",
+        "lib/dom.js",
+        "lib/selectors.js",
+        "lib/parse.js",
+        "content/kleinanzeigen.js"
+      ],
+      "css": ["content/panel.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.vinted.de/*",
+        "https://www.vinted.at/*",
+        "https://www.ebay.de/*",
+        "https://www.ebay.at/*",
+        "https://www.willhaben.at/*"
+      ],
+      "js": [
+        "lib/api.js",
+        "lib/storage.js",
+        "lib/dom.js",
+        "content/export.js"
+      ],
+      "css": ["content/panel.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_ui": {
+    "page": "dashboard/dashboard.html",
+    "open_in_tab": true
+  }
+}

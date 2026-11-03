@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Anzeigenkiste</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="mark" aria-hidden="true">▣</span> Anzeigenkiste</div>
+    <nav class="tabs" role="tablist">
+      <button class="tab is-active" data-tab="ads" role="tab">Anzeigen</button>
+      <button class="tab" data-tab="templates" role="tab">Textvorlagen</button>
+      <button class="tab" data-tab="settings" role="tab">Einstellungen</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Anzeigen -->
+    <section id="tab-ads" class="panel">
+      <div class="stats" id="stats"></div>
+      <div class="toolbar">
+        <input id="search" class="input" type="search" placeholder="Suchen nach Titel, Kategorie, Ort …" aria-label="Anzeigen durchsuchen">
+        <select id="sort" class="input input--auto" aria-label="Sortierung">
+          <option value="updated">Zuletzt geändert</option>
+          <option value="views">Meiste Aufrufe</option>
+          <option value="price">Preis absteigend</option>
+          <option value="title">Titel A–Z</option>
+        </select>
+        <button id="new-ad" class="btn btn--primary">+ Neue Anzeige</button>
+      </div>
+      <div id="list" class="list"></div>
+      <div id="empty" class="empty" hidden>
+        <h2>Deine Kiste ist noch leer</h2>
+        <p>Öffne eine deiner Anzeigen auf Kleinanzeigen und klicke auf <b>„In Anzeigenkiste speichern“</b>.
+          Oder geh zu <a href="https://www.kleinanzeigen.de/m-meine-anzeigen.html" target="_blank" rel="noopener">Meine Anzeigen</a> und sichere alle auf einmal.</p>
+      </div>
+    </section>
+
+    <!-- Vorlagen -->
+    <section id="tab-templates" class="panel" hidden>
+      <p class="muted">Diese Vorlagen erscheinen im Kleinanzeigen-Postfach über dem Eingabefeld. Ein Klick fügt den Text ein.</p>
+      <div id="templates" class="templates"></div>
+      <button id="add-template" class="btn">+ Vorlage hinzufügen</button>
+    </section>
+
+    <!-- Einstellungen -->
+    <section id="tab-settings" class="panel" hidden>
+      <div class="card">
+        <h3>Land für Vinted und eBay</h3>
+        <select id="country" class="input input--auto">
+          <option value="de">Deutschland (vinted.de, ebay.de)</option>
+          <option value="at">Österreich (vinted.at, ebay.at)</option>
+        </select>
+      </div>
+      <div class="card">
+        <h3>Sicherung</h3>
+        <p class="muted">Alle Daten liegen nur in diesem Browser. Sichere sie regelmäßig als Datei.</p>
+        <div class="row">
+          <button id="backup" class="btn">Sicherung herunterladen</button>
+          <label class="btn">Sicherung einspielen<input id="restore" type="file" accept="application/json" hidden></label>
+        </div>
+        <p id="usage" class="muted small"></p>
+      </div>
+      <div class="card">
+        <h3>Über</h3>
+        <p class="muted">Anzeigenkiste ist freie Software unter MIT-Lizenz und steht in keiner Verbindung zu Kleinanzeigen, Vinted, eBay oder willhaben.
+          Es werden keine Daten an Server gesendet.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Editor -->
+  <dialog id="editor" class="dialog">
+    <form method="dialog" id="editor-form">
+      <h2 id="editor-title">Anzeige bearbeiten</h2>
+      <label>Titel <input name="title" class="input" maxlength="65" required></label>
+      <label>Beschreibung <textarea name="description" class="input" rows="8"></textarea></label>
+      <div class="row">
+        <label class="grow">Preis (€) <input name="price" class="input" inputmode="decimal"></label>
+        <label class="grow">Preisart
+          <select name="priceType" class="input">
+            <option value="FIXED">Festpreis</option>
+            <option value="NEGOTIABLE">VB</option>
+            <option value="GIVE_AWAY">Zu verschenken</option>
+          </select>
+        </label>
+      </div>
+      <label>Kategorie (mit › trennen) <input name="category" class="input" placeholder="Elektronik › Handy & Telefon"></label>
+      <label>Schlagwörter (mit Komma trennen) <input name="tags" class="input" placeholder="Lager A, Winter"></label>
+      <div>
+        <span class="label">Bilder</span>
+        <div id="editor-images" class="thumbs"></div>
+        <label class="btn btn--sm">Bilder hinzufügen<input id="editor-files" type="file" accept="image/*" multiple hidden></label>
+      </div>
+      <div class="row row--end">
+        <button value="cancel" class="btn" formnovalidate>Abbrechen</button>
+        <button value="save" class="btn btn--primary">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="../lib/api.js"></script>
+  <script src="../lib/storage.js"></script>
+  <script src="../lib/dom.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>
