@@ -77,3 +77,4 @@
 .ak-toast--in { transform: translate(-50%, 0); opacity: 1; }
 .ak-toast--warn { background: var(--ak-warn); }
 .ak-toast--err { background: var(--ak-err); }
+.ak-warn { color: var(--ak-warn); font-weight: 600; margin: 0; }

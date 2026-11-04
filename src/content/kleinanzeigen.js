@@ -185,7 +185,8 @@
       hint.replaceChildren(
         ad.category?.length ? h("p", { class: "ak-muted ak-small" }, `${ad.source === "vinted" ? "Vinted" : "Bisher"}: ${ad.category.join(" › ")}`) : null,
         map.categoryLabel ? h("p", { class: "ak-small" }, `→ Kleinanzeigen: ${map.categoryLabel}`) : null,
-        facts ? h("p", { class: "ak-muted ak-small" }, facts) : null
+        facts ? h("p", { class: "ak-muted ak-small" }, facts)
+          : h("p", { class: "ak-small ak-warn" }, "Keine Größe, Farbe oder Zustand gespeichert. Starte das Inserieren über das Dashboard, dann lädt die Kiste die Angaben von Vinted nach.")
       );
     };
     select.addEventListener("change", showHint);

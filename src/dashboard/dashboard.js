@@ -54,12 +54,39 @@
     pubDialog.showModal();
   }
 
+  // Vinted-Artikel, die mit einer älteren Version gespeichert wurden, haben keine Marke, Größe,
+  // Zustand, Farbe und keinen vollständigen Kategoriepfad. Diese Angaben vor dem Inserieren nachladen.
+  const needsRefresh = (ad) => ad.source === "vinted" && ad.url &&
+    (!ad.details || !ad.catalogIds?.length || (ad.images || []).some((i) => /^data:image\/webp/.test(i)));
+
+  async function refreshFromVinted(ad) {
+    const res = await fetch(ad.url, { credentials: "include" });
+    if (!res.ok) throw new Error(`Vinted antwortet mit ${res.status}`);
+    const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+    const d = AK.parseProduct.parseProductPage(doc, ad.url, "vinted");
+    if (!d.title) throw new Error("Artikel auf Vinted nicht mehr gefunden");
+    const update = { id: ad.id, details: d.details, catalogIds: d.catalogIds };
+    if (d.category?.length) update.category = d.category;
+    const webp = (ad.images || []).some((i) => /^data:image\/webp/.test(i));
+    if (webp || d.imageUrls.length > (ad.images?.length || 0)) {
+      const imgs = await api.runtime.sendMessage({ type: "fetchImages", urls: d.imageUrls });
+      if (Array.isArray(imgs) && imgs.length) update.images = imgs;
+    }
+    return AK.store.saveAd(update);
+  }
+
   pubDialog.addEventListener("close", async () => {
     if (pubDialog.returnValue !== "go" || !pubAd) return;
     const targets = [...pubDialog.querySelectorAll("#publish-list input:checked")].map((i) => i.value);
     if (!targets.length) return;
     await api.storage.local.set({ lastTargets: targets });
-    for (const [i, t] of targets.entries()) await go(t, pubAd, i === 0);
+    let ad = pubAd;
+    if (needsRefresh(ad)) {
+      AK.dom.toast("Lade Größe, Farbe und Zustand von Vinted nach …");
+      try { ad = await refreshFromVinted(ad); }
+      catch (e) { alert(`Vinted-Angaben konnten nicht nachgeladen werden (${e.message}). Größe, Farbe und Zustand bitte selbst wählen.`); }
+    }
+    for (const [i, t] of targets.entries()) await go(t, ad, i === 0);
   });
 
   function renderList() {

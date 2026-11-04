@@ -195,6 +195,38 @@ try {
   assert.equal(vad.sourceId, "vinted:10652437387");
   console.log("✓ Artikel von Vinted mit Kategorie, Marke, Größe, Zustand und Farbe geholt");
 
+  // 10b) Mit alter Version gespeicherter Vinted-Artikel (ohne Details): Dashboard lädt sie beim Inserieren nach
+  await dash.evaluate(async (id) => {
+    const ads = await AK.store.getAds();
+    delete ads[id].details; delete ads[id].catalogIds; ads[id].category = ["Damen Hoodies"];
+    await chrome.storage.local.set({ ads });
+  }, vad.id);
+  await dash.reload();
+  await dash.bringToFront(); // Chrome schickt das close-Ereignis des Dialogs nur in sichtbaren Tabs
+  await dash.waitForSelector(".item h3");
+  dash.on("dialog", (d) => d.dismiss());
+  // Den Vinted-Abruf des Dashboards auf den Nachbau umleiten
+  await dash.setRequestInterception(true);
+  dash.on("request", (r) => {
+    const u = new URL(r.url());
+    if (u.hostname === "www.vinted.de" && PAGES[u.hostname + u.pathname]) r.respond({ status: 200, contentType: "text/html; charset=utf-8", body: PAGES[u.hostname + u.pathname] });
+    else r.continue();
+  });
+  await dash.evaluate(() => [...document.querySelectorAll(".item")].find((i) => i.textContent.includes("Nike Pullover"))
+    .querySelector(".actions button").click());
+  await dash.waitForSelector("#publish[open]");
+  await dash.evaluate(() => { document.querySelectorAll("#publish-list input").forEach((c) => (c.checked = c.value === "kleinanzeigen")); });
+  await click(dash, "#publish button[value=go]");
+  let refreshed = null;
+  for (let i = 0; i < 120 && !refreshed?.details; i++) {
+    await new Promise((r) => setTimeout(r, 500));
+    refreshed = await dash.evaluate(async (id) => AK.store.getAd(id), vad.id);
+  }
+  assert.deepEqual(refreshed.details, vad.details);
+  assert.deepEqual(refreshed.category, vad.category);
+  for (const p of await browser.pages()) if (/kleinanzeigen\.de\/p-anzeige/.test(p.url())) await p.close().catch(() => {});
+  console.log("✓ Alte Vinted-Einträge ohne Details werden beim Inserieren nachgeladen");
+
   // 11) Vinted-Artikel auf Kleinanzeigen: Kategorie und alle Merkmale nach Vinted
   await dash.evaluate(async (id) => { await AK.store.setPending("kleinanzeigen", id); await AK.store.setPending("willhaben", id); }, vad.id);
   const post2 = await fakePage("https://www.kleinanzeigen.de/p-anzeige-aufgeben-schritt2.html");

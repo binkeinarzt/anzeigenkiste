@@ -25,7 +25,10 @@ async function toJpeg(blob) {
 }
 
 async function toDataUrl(url) {
-  const res = await fetch(url, { credentials: "omit" });
+  // Zeitlimit: ein hängender Bildserver darf die Kiste nicht blockieren
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  const res = await fetch(url, { credentials: "omit", signal: ctrl.signal }).finally(() => clearTimeout(timer));
   if (!res.ok) throw new Error(`Bild ${res.status}`);
   let blob = await res.blob();
   try { blob = await toJpeg(blob); } catch (e) { console.warn("[Anzeigenkiste] Umwandlung fehlgeschlagen", url, e); }
@@ -36,11 +39,10 @@ api.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     switch (msg?.type) {
       case "fetchImages": {
-        const out = [];
-        for (const u of msg.urls || []) {
-          try { out.push(await toDataUrl(u)); } catch (e) { console.warn("[Anzeigenkiste]", u, e); }
-        }
-        return out;
+        // parallel laden, Reihenfolge beibehalten, fehlgeschlagene Bilder auslassen
+        const results = await Promise.allSettled((msg.urls || []).map(toDataUrl));
+        results.filter((r) => r.status === "rejected").forEach((r) => console.warn("[Anzeigenkiste]", r.reason));
+        return results.filter((r) => r.status === "fulfilled").map((r) => r.value);
       }
       case "fetchText": {
         // Nur für eBay-Beschreibungen (eigener Frame auf ebaydesc.com)
