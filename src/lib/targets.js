@@ -131,7 +131,7 @@
       // willhaben leert den Preis, wenn sich die Kategorie ändert → nachfüllen, solange leer
       ad.price && ad.priceType !== "GIVE_AWAY" && { id: "price", label: "Preis", refill: true, isFilled: (el) => el.value.trim() !== "",
         find: () => q("#price, input[name='price']"), apply: (el) => setValue(el, ad.price) },
-      ad.images?.length && { id: "images", label: `${ad.images.length} Bilder`, hidden: true, find: () => q("#imagePicker, input[type='file']"), apply: (el) => injectFiles(el, ad.images, "artikel") },
+      ad.images?.length && { id: "images", label: `${ad.images.length} Bilder`, hidden: true, find: () => q("#imagePicker, input[type='file']"), apply: (el) => AK.dom.injectFilesOnce(ad.id, el, ad.images, "artikel") },
       d.brand && {
         id: "brand", label: "Marke", refill: true,
         find: () => { const k = whKey(/^BRAND/); return k ? (q(`input[name='${k}-radio-group']`) || q(`[data-testid='${k}-button']`)) : null; },
@@ -213,7 +213,7 @@
       ad.images?.length && {
         id: "images", label: `${ad.images.length} Bilder`, hidden: true,
         find: () => Array.from(document.querySelectorAll("input[type='file']")).find((i) => /image/.test(i.accept || "image")) || null,
-        apply: (el) => injectFiles(el, ad.images, "artikel")
+        apply: (el) => AK.dom.injectFilesOnce(ad.id, el, ad.images, "artikel")
       },
       attr("brand", "Marke", /^marke|^brand/i, [d.brand], ["Sonstige", "Andere Marke"]),
       attr("size", "Größe", /^größe|^groesse|^size/i, [sz.number, sz.letter, d.size]),

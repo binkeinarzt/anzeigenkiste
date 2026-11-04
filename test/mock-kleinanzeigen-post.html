@@ -1,16 +1,18 @@
 <!doctype html>
-<html lang="de"><head><meta charset="utf-8"><title>Anzeige aufgeben | kleinanzeigen.de (Testnachbau)</title></head>
+<html lang="de"><head><meta charset="utf-8"><style>.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}</style><title>Anzeige aufgeben | kleinanzeigen.de (Testnachbau)</title></head>
 <body>
 <!-- Nachbau des Kleinanzeigen-Formulars (Stand November 2026) mit dem Verhalten, das im echten Formular beobachtet wurde:
      Kategorievorschläge nach dem Titel, Merkmale erst nach Kategoriewahl, Klapplisten mit role=combobox/listbox,
      Marke als Suchfeld mit Vorschlägen, Zustand in einem <dialog> mit „Bestätigen“. -->
 <form id="f" onsubmit="return false">
+  <div id="photos"></div>
   <div class="dropzone">Zieh deine Fotos hier rein</div><input type="file" multiple accept="image/jpeg,image/gif,image/png" style="display:none">
   <input id="ad-title" name="title">
   <div id="ad-category-suggestions"><a href="#">Wähle deine Kategorie</a></div>
   <input type="hidden" name="categoryId" value="">
   <div id="attrs"></div>
   <textarea id="ad-description" name="description"></textarea>
+  <div id="shipping"></div>
   <input id="ad-price-amount" name="priceAmount">
   <input type="hidden" name="priceType" value="FIXED">
   <button id="ad-price-type" type="button" role="combobox" aria-expanded="false" aria-controls="ad-price-type-menu">Festpreis</button>
@@ -56,6 +58,35 @@
   }
 
   $("#ad-price-type").replaceWith(combobox("ad-price-type", ["Festpreis", "VB", "Zu verschenken"], $("input[name=priceType]")));
+
+  // Wie im Original: hochgeladene Fotos erscheinen als <img alt="Bild zur Anzeige">,
+  // das Foto-Feld wird danach durch ein neues, leeres Feld ersetzt
+  function bindFileInput(input) {
+    input.addEventListener("change", () => {
+      for (const f of input.files) {
+        const img = document.createElement("img");
+        img.alt = "Bild zur Anzeige"; img.dataset.name = f.name; img.dataset.type = f.type;
+        $("#photos").append(img);
+      }
+      const fresh = input.cloneNode(); input.replaceWith(fresh); bindFileInput(fresh);
+    });
+  }
+  bindFileInput($("input[type=file]"));
+
+  // Versand und „Direkt kaufen“ (nur bei „Versand möglich“, anfangs nicht beantwortet)
+  function renderShipping(prefix) {
+    $("#shipping").innerHTML =
+      `<input type="radio" id="ad-shipping-enabled-yes" name="attributeMap[${prefix}.versand]" value="ja"><label for="ad-shipping-enabled-yes">Versand möglich</label>`
+      + `<input type="radio" id="ad-shipping-enabled-no" name="attributeMap[${prefix}.versand]" value="nein" checked><label for="ad-shipping-enabled-no">Nur Abholung</label>`
+      + `<div id="buy-now"></div>`;
+    const update = () => {
+      $("#buy-now").innerHTML = $("#ad-shipping-enabled-yes").checked
+        ? `<input type="radio" id="ad-buy-now-true" name="buyNow" value="true" class="sr-only"><label for="ad-buy-now-true">Ja, Direkt kaufen</label>`
+          + `<input type="radio" id="ad-buy-now-false" name="buyNow" value="false" class="sr-only"><label for="ad-buy-now-false">Nein</label>` : "";
+    };
+    $("#shipping").querySelectorAll("input").forEach((r) => r.addEventListener("change", update));
+    update();
+  }
 
   function renderAttributes(prefix) {
     const box = $("#attrs");
@@ -105,6 +136,7 @@
     sug.querySelectorAll("input").forEach((r) => r.addEventListener("click", () => {
       $("input[name=categoryId]").value = r.value;
       renderAttributes({ 160: "kleidung_herren", 154: "kleidung_damen", 22: "baby_kinderkleidung" }[r.value]);
+      renderShipping({ 160: "kleidung_herren", 154: "kleidung_damen", 22: "baby_kinderkleidung" }[r.value]);
     }));
   });
 </script>

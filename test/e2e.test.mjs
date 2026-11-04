@@ -127,11 +127,11 @@ try {
   const post = await fakePage("https://www.kleinanzeigen.de/p-anzeige-aufgeben-schritt2.html");
   await post.waitForFunction(() => document.querySelector("#ad-title").value === "IKEA Sofa Kivik grau", { timeout: 8000 });
   await post.waitForFunction(() => document.querySelector("input[name=priceType]").value === "NEGOTIABLE", { timeout: 8000 });
-  for (let i = 0; i < 30 && !(await post.$eval("input[type=file]", (e) => e.files.length)); i++) await new Promise((r) => setTimeout(r, 200));
+  for (let i = 0; i < 30 && !(await post.$$eval("img[alt='Bild zur Anzeige']", (e) => e.length)); i++) await new Promise((r) => setTimeout(r, 200));
   const ka = await post.evaluate(() => ({
     desc: document.querySelector("#ad-description").value,
     price: document.querySelector("#ad-price-amount").value,
-    files: document.querySelector("input[type=file]").files.length
+    files: document.querySelectorAll("img[alt='Bild zur Anzeige']").length
   }));
   assert.ok(ka.desc.startsWith("Sehr guter Zustand."));
   assert.deepEqual([ka.price, ka.files], ["999", 1]);
@@ -241,6 +241,11 @@ try {
   console.log("✓ Alte Vinted-Einträge ohne Details werden über einen Hintergrund-Tab nachgeladen, Tab schließt sich wieder");
 
   // 11) Vinted-Artikel auf Kleinanzeigen: Kategorie und alle Merkmale nach Vinted
+  // Einstellung „Direkt kaufen: Ja“ im Dashboard setzen
+  await dash.bringToFront();
+  await dash.evaluate(() => [...document.querySelectorAll(".tab")].find((t) => t.dataset.tab === "settings").click());
+  await dash.select("#buy-now", "true");
+  assert.equal(await dash.evaluate(async () => (await chrome.storage.local.get("kaBuyNow")).kaBuyNow), "true");
   // Zwei WebP-Bilder hinterlegen, wie sie ältere Versionen von Vinted gespeichert haben
   await dash.evaluate(async (id) => {
     const webp = (color) => { const c = document.createElement("canvas"); c.width = 60; c.height = 40; const x = c.getContext("2d"); x.fillStyle = color; x.fillRect(0, 0, 60, 40); return c.toDataURL("image/webp"); };
@@ -258,9 +263,26 @@ try {
     cond: await v("attributeMap[kleidung_damen.condition]"), submitted: await post2.evaluate(() => !!window.__submitted)
   };
   assert.deepEqual(ka2, { cat: "154", art: "pullover", size: "m_38", color: "rose", brand: "nike", cond: "new", submitted: false });
-  const kaFiles = await post2.$eval("input[type=file]", (e) => [...e.files].map((f) => `${f.name}:${f.type}`));
-  assert.deepEqual(kaFiles, ["anzeige-1.jpg:image/jpeg", "anzeige-2.jpg:image/jpeg"], "Kleinanzeigen: Fotos als JPEG im versteckten Foto-Feld");
-  console.log("✓ Kleinanzeigen: Damenbekleidung › Pullover, M, Nike, Rosé, Neu, 2 Fotos (WebP → JPEG) – nichts abgeschickt");
+  const photos = () => post2.$$eval("img[alt='Bild zur Anzeige']", (e) => e.map((i) => `${i.dataset.name}:${i.dataset.type}`));
+  for (let i = 0; i < 20 && (await photos()).length < 2; i++) await new Promise((r) => setTimeout(r, 200));
+  assert.deepEqual(await photos(), ["anzeige-1.jpg:image/jpeg", "anzeige-2.jpg:image/jpeg"], "Kleinanzeigen: Fotos als JPEG im versteckten Foto-Feld");
+  for (let i = 0; i < 20 && !(await post2.$eval("#ad-buy-now-true", (e) => e.checked).catch(() => false)); i++) await new Promise((r) => setTimeout(r, 200));
+  assert.equal(await post2.$eval("#ad-shipping-enabled-yes", (e) => e.checked), true, "Versand möglich gewählt");
+  assert.equal(await post2.$eval("#ad-buy-now-true", (e) => e.checked), true, "Direkt kaufen: Ja gewählt");
+
+  // Erneut ausfüllen (z. B. nach Unterbrechen) darf die Fotos nicht doppelt hochladen
+  await post2.bringToFront();
+  await post2.evaluate(() => [...document.querySelectorAll("#ak-panel button")].find((b) => b.textContent === "Formular ausfüllen").click());
+  await new Promise((r) => setTimeout(r, 2500));
+  assert.equal((await photos()).length, 2, "Fotos nach erneutem Ausfüllen nicht doppelt");
+
+  // ✕ am Panel stoppt das Ausfüllen: geleerte Beschreibung bleibt leer
+  await post2.evaluate(() => document.querySelector("#ak-panel .ak-icon-btn").click());
+  await post2.evaluate(() => { const t = document.querySelector("#ad-description"); t.value = ""; t.dispatchEvent(new Event("input", { bubbles: true })); document.body.append(document.createElement("div")); });
+  await new Promise((r) => setTimeout(r, 1500));
+  assert.equal(await post2.$eval("#ad-description", (e) => e.value), "", "nach ✕ wird nichts mehr ausgefüllt");
+  console.log("✓ Kleinanzeigen: Damenbekleidung › Pullover, M, Nike, Rosé, Neu, 2 Fotos (WebP → JPEG), Direkt kaufen – nichts abgeschickt");
+  console.log("✓ Erneutes Ausfüllen lädt Fotos nicht doppelt hoch, ✕ stoppt das Ausfüllen");
 
   // 12) willhaben: Beschreibung im Editor, Felder nach Kategoriewahl, Preis nachgefüllt, Fenster richtig gespeichert
   const wh = await fakePage("https://www.willhaben.at/iad/anzeigenaufgabe/marktplatz?adTypeId=67&productId=67");

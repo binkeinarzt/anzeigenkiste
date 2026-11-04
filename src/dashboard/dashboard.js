@@ -268,6 +268,7 @@
 
   // ---------- Einstellungen ----------
   $("#country").addEventListener("change", (e) => { country = e.target.value; api.storage.local.set({ country }); });
+  $("#buy-now").addEventListener("change", (e) => api.storage.local.set({ kaBuyNow: e.target.value }));
 
   $("#backup").addEventListener("click", async () => {
     const data = await AK.store.exportBackup();
@@ -301,6 +302,7 @@
   (async () => {
     country = (await api.storage.local.get("country")).country || "de";
     $("#country").value = country;
+    $("#buy-now").value = (await api.storage.local.get("kaBuyNow")).kaBuyNow || "";
     templates = await AK.store.getTemplates();
     renderTemplates();
     load();

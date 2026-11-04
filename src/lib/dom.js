@@ -138,6 +138,18 @@
     return true;
   }
 
+  // Fotos höchstens einmal pro Anzeige und Seite einfügen. Kleinanzeigen ersetzt das Foto-Feld nach dem
+  // Hochladen durch ein neues, leeres Feld; ohne diese Sperre würde jeder neue Durchlauf (erneutes Ausfüllen,
+  // Abbrechen und Neustarten) die Fotos noch einmal hochladen.
+  const photosInjected = new Set();
+  async function injectFilesOnce(key, input, dataUrls, baseName, alreadyUploaded = 0) {
+    if (photosInjected.has(key)) return true;
+    if (alreadyUploaded > 0) { photosInjected.add(key); return true; }
+    const ok = await injectFiles(input, dataUrls, baseName);
+    if (ok) photosInjected.add(key);
+    return ok;
+  }
+
   function downloadDataUrl(dataUrl, filename) {
     const a = document.createElement("a");
     a.href = dataUrl;
@@ -178,19 +190,21 @@
   }
 
   // Schwebendes Panel unten rechts. Gibt { root, body, close } zurück.
-  function panel(title, { id = "ak-panel" } = {}) {
+  // onClose: wird beim Schließen über ✕ aufgerufen (z. B. um das Ausfüllen zu stoppen)
+  function panel(title, { id = "ak-panel", onClose } = {}) {
     document.getElementById(id)?.remove();
     const body = h("div", { class: "ak-panel__body" });
+    const close = () => { onClose?.(); root.remove(); };
     const root = h("aside", { id, class: "ak-panel", role: "dialog", "aria-label": title },
       h("header", { class: "ak-panel__head" },
         h("span", { class: "ak-logo", "aria-hidden": "true" }, "▣"),
         h("strong", {}, title),
-        h("button", { class: "ak-icon-btn", title: "Schließen", onclick: () => root.remove() }, "✕")
+        h("button", { class: "ak-icon-btn", title: "Schließen und Ausfüllen stoppen", onclick: close }, "✕")
       ),
       body
     );
     document.body.appendChild(root);
-    return { root, body, close: () => root.remove() };
+    return { root, body, close };
   }
 
   function formatPrice(ad) {
@@ -199,5 +213,5 @@
     return `${ad.price} €${ad.priceType === "NEGOTIABLE" ? " VB" : ""}`;
   }
 
-  AK.dom = { $, $$, waitFor, sleep, setValue, setEditorText, insertText, dataUrlToFile, ensureJpeg, injectFiles, downloadDataUrl, copy, h, toast, panel, formatPrice };
+  AK.dom = { $, $$, waitFor, sleep, setValue, setEditorText, insertText, dataUrlToFile, ensureJpeg, injectFiles, injectFilesOnce, downloadDataUrl, copy, h, toast, panel, formatPrice };
 })();

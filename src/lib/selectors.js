@@ -31,6 +31,10 @@
       price: ["#ad-price-amount", "input[name='priceAmount']", "#pstad-price"],
       priceType: ["#ad-price-type", "select[name='priceType']", "#priceType"],
       images: ["input[type='file'][accept*='image']", "input[type='file']"],
+      uploadedPhotos: "img[alt='Bild zur Anzeige']",
+      // „Direkt kaufen“ (erscheint nur bei „Versand möglich“) und Versand
+      buyNow: (v) => `input[name='buyNow'][value='${v}']`,
+      shippingYes: "input[name^='attributeMap['][name$='.versand]'][value='ja']",
       // Kategorievorschläge erscheinen nach Eingabe des Titels als Radio-Buttons (value = Kategorie-ID)
       categoryPicker: ["#ad-category-picker", "fieldset[aria-label*='Kategorie']"],
       categoryInput: ["input[name='categoryId']"],

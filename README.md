@@ -15,6 +15,7 @@ Freie Browsererweiterung für alle, die auf Kleinanzeigen verkaufen. Anzeigen si
 | Inserieren | Dashboard → „Inserieren …“ | Plattformen ankreuzen (Kleinanzeigen, Vinted, eBay, willhaben, Facebook, markt.de, Quoka). Je Plattform öffnet sich ein Tab, das Formular wird mit Titel, Text, Preis und Bildern ausgefüllt. Kopier-Knöpfe als Rückfall |
 | Vinted als Vorlage | Artikel von Vinted holen, dann „Inserieren …“ | Kategorie, Marke, Größe, Zustand und Farbe werden von Vinted übernommen und auf Kleinanzeigen und willhaben automatisch gesetzt – auch Felder, die erst nach der Kategoriewahl erscheinen |
 | Gegenrichtung | Artikelseiten auf Vinted, eBay, willhaben | Knopf „In Anzeigenkiste speichern“ liest den Artikel aus (JSON-LD, sonst Open Graph) |
+| Direkt kaufen | Dashboard → Einstellungen → Kleinanzeigen | „Direkt kaufen“ automatisch auf Ja (inkl. „Versand möglich“) oder Nein setzen, oder selbst wählen |
 | Textvorlagen | Postfach (`/m-nachrichten…`) | Vorlagen-Chips über dem Nachrichtenfeld, Klick fügt Text ein |
 | Übersicht | Dashboard | Liste mit Aufrufen, Preis, Ort, Schlagwörtern; Suche, Sortierung, Bearbeiten, eigene Anzeigen anlegen |
 | Sicherung | Dashboard → Einstellungen | Export/Import der ganzen Kiste als JSON |

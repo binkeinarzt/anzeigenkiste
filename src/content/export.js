@@ -37,7 +37,7 @@
   }
 
   function renderPanel(ad) {
-    const { body } = AK.dom.panel(`Nach ${P.label} übertragen`);
+    const { body } = AK.dom.panel(`Nach ${P.label} übertragen`, { onClose: () => run?.stop() });
     const status = h("div");
     const d = ad.details || {};
     const facts = [d.brand, d.size && `Gr. ${d.size}`, d.condition, d.color].filter(Boolean).join(" · ");

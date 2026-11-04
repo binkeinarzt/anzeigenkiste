@@ -123,6 +123,7 @@
     const map = AK.mapping.toKleinanzeigen(ad);
     const { choose } = AK.autofill;
     const priceText = { FIXED: "Festpreis", NEGOTIABLE: "VB", GIVE_AWAY: "Zu verschenken" }[ad.priceType];
+    const { kaBuyNow: buyNow = "" } = await AK.api.storage.local.get("kaBuyNow");
 
     const steps = [
       { id: "title", label: "Titel", find: () => $(S.post.title), apply: (el) => setValue(el, ad.title) },
@@ -144,7 +145,15 @@
       ad.priceType !== "GIVE_AWAY" && ad.price && { id: "price", label: "Preis", refill: true, isFilled: (el) => el.value.trim() !== "",
         find: () => $(S.post.price), apply: (el) => setValue(el, ad.price) },
       priceText && { id: "priceType", label: "Preisart", find: () => $(S.post.priceType), apply: async (el) => !!(await choose(el, [ad.priceType, priceText])) },
-      ad.images?.length && { id: "images", label: `${ad.images.length} Bilder`, hidden: true, find: () => $(S.post.images), apply: (el) => injectFiles(el, ad.images, "anzeige") },
+      ad.images?.length && { id: "images", label: `${ad.images.length} Bilder`, hidden: true, find: () => $(S.post.images),
+        apply: (el) => AK.dom.injectFilesOnce(ad.id, el, ad.images, "anzeige", document.querySelectorAll(S.post.uploadedPhotos).length) },
+      // Einstellung „Direkt kaufen“: braucht „Versand möglich“
+      buyNow === "true" && { id: "shipping", label: "Versand möglich", refill: true, hidden: true, isFilled: (el) => el.checked,
+        find: () => $(S.post.shippingYes), apply: (el) => { if (!el.checked) el.click(); return true; } },
+      (buyNow === "true" || buyNow === "false") && {
+        id: "buyNow", label: `Direkt kaufen: ${buyNow === "true" ? "Ja" : "Nein"}`, refill: true, hidden: true, isFilled: (el) => el.checked,
+        find: () => $(S.post.buyNow(buyNow)), apply: (el) => { if (!el.checked) el.click(); return el.checked; }
+      },
       ...map.attrs.map((a) => ({
         id: `attr-${a.name}`, label: a.label, refill: true, optional: a.name === "material",
         find: () => attributeControl(a.name),
@@ -171,7 +180,7 @@
     const ads = await AK.store.getAdList();
     if (!ads.length) return;
 
-    const { body } = AK.dom.panel("Aus Anzeigenkiste einfügen");
+    const { body } = AK.dom.panel("Aus Anzeigenkiste einfügen", { onClose: () => currentRun?.stop() });
     const select = h("select", { class: "ak-input" },
       ads.map((a) => h("option", { value: a.id, selected: pending?.adId === a.id }, `${a.title} · ${formatPrice(a)}`)));
     const hint = h("div", { class: "ak-muted ak-small" });
