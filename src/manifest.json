@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Anzeigenkiste",
   "short_name": "Anzeigenkiste",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Open Source: Anzeigen sichern, neu inserieren und zwischen Kleinanzeigen, Vinted und willhaben übertragen. Alles lokal, kostenlos.",
   "icons": {
     "16": "icons/icon16.png",

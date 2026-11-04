@@ -17,7 +17,7 @@ Freie Browsererweiterung für alle, die auf Kleinanzeigen verkaufen. Anzeigen si
 | Gegenrichtung | Artikelseiten auf Vinted und willhaben | Knopf „In Anzeigenkiste speichern“ liest den Artikel aus (JSON-LD, sonst Open Graph) |
 | Direkt kaufen | Dashboard → Einstellungen → Kleinanzeigen | „Direkt kaufen“ automatisch auf Ja (inkl. „Versand möglich“) oder Nein setzen, oder selbst wählen |
 | Textvorlagen | Postfach (`/m-nachrichten…`) | Vorlagen-Chips über dem Nachrichtenfeld, Klick fügt Text ein |
-| Übersicht | Dashboard | Liste mit Preis, Ort, Schlagwörtern; Suche, Sortierung, Bearbeiten, eigene Anzeigen anlegen |
+| Übersicht | Dashboard | Liste mit Preis, Marke, Größe, Ort, Schlagwörtern; Suche, Sortierung, Bearbeiten, eigene Anzeigen anlegen. Kategorie per Auswahl (Bereich › Art › Unterkategorie) mit Vorschau, welche Kleinanzeigen-Kategorie daraus wird; Marke, Größe, Zustand und Farbe |
 | Sicherung | Dashboard → Einstellungen | Export/Import der ganzen Kiste als JSON |
 
 **Bewusst nicht enthalten:** automatisches Verlängern, automatisches Veröffentlichen, Autoresponder. Kleinanzeigen untersagt automatisierte Zugriffe in seinen Nutzungsbedingungen. Anzeigenkiste füllt nur aus, abschicken tut immer der Mensch.
@@ -45,6 +45,7 @@ src/
     selectors.js         ALLE Kleinanzeigen-Selektoren an einer Stelle
     parse.js             liest eine Kleinanzeigen-Detailseite aus
     platforms.js         Zielplattformen: Startseite, Formularfelder, Artikelseiten
+    categories.js        Kategoriebaum für die Auswahl im Dashboard
     mapping.js           Vinted-Kategorie/-Merkmale → Kleinanzeigen-Kategorien und -Merkmale
     autofill.js          Ausfüll-Motor: füllt Felder, sobald sie erscheinen (Klapplisten, Dialoge, Editoren)
     targets.js           Ausfüll-Schritte für willhaben und allgemeine Formulare

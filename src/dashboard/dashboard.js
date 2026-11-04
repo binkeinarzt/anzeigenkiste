@@ -178,6 +178,59 @@
         h("button", { type: "button", title: "Entfernen", onclick: () => { editImages.splice(i, 1); renderEditorImages(); } }, "✕"))));
   }
 
+  // ---------- Kategorie-Auswahl (Bereich › Art › Unterkategorie) ----------
+  const TREE = AK.CATEGORY_TREE;
+  const catSel = [$("#cat-1"), $("#cat-2"), $("#cat-3")];
+  let catTail = [];        // tiefere Ebenen eines Vinted-Pfads (z. B. „Jacken › Steppjacken“), bleiben erhalten
+  let catTouched = false;  // erst wenn der Nutzer etwas ändert, wird der Pfad neu gebildet
+
+  function fillSelect(sel, values, current, placeholder) {
+    const opts = [h("option", { value: "" }, placeholder)];
+    for (const v of values) opts.push(h("option", { value: v }, v));
+    // Werte aus Vinted, die es im Baum nicht gibt, trotzdem anzeigen
+    if (current && !values.includes(current)) opts.push(h("option", { value: current }, `${current} (übernommen)`));
+    sel.replaceChildren(...opts);
+    sel.value = current || "";
+    sel.disabled = values.length === 0 && !current;
+  }
+
+  function renderCategory(path) {
+    const [a = "", b = "", c = ""] = path;
+    fillSelect(catSel[0], Object.keys(TREE), a, "Bitte wählen");
+    fillSelect(catSel[1], a && TREE[a] ? Object.keys(TREE[a]) : [], b, a ? "Bitte wählen" : "–");
+    fillSelect(catSel[2], a && b && TREE[a]?.[b] ? TREE[a][b] : [], c, b ? "Bitte wählen" : "–");
+    renderPreview();
+  }
+
+  function currentCategory() {
+    const path = catSel.map((s) => s.value).filter(Boolean);
+    return catTouched ? path : [...path, ...catTail];
+  }
+
+  // Zeigt direkt, was daraus auf Kleinanzeigen wird
+  function renderPreview() {
+    const category = currentCategory();
+    const p = $("#cat-preview");
+    if (!category.length) { p.textContent = "Ohne Kategorie schlägt Kleinanzeigen anhand des Titels eine vor."; return; }
+    const m = AK.mapping.toKleinanzeigen({ category, details: {} });
+    const art = (m.attrs.find((x) => x.name === "type") || m.attrs.find((x) => x.name === "art"))?.wanted?.[1];
+    p.replaceChildren(
+      category.join(" › "),
+      h("br"),
+      m.categoryId
+        ? h("span", {}, "→ Kleinanzeigen: ", h("b", {}, [m.categoryLabel, art].filter(Boolean).join(" › ")))
+        : "→ Kleinanzeigen: Kategorie wählst du dort selbst (Vorschlag anhand des Titels)."
+    );
+  }
+
+  catSel.forEach((sel, i) => sel.addEventListener("change", () => {
+    catTouched = true;
+    catTail = [];
+    const path = catSel.map((s) => s.value);
+    for (let j = i + 1; j < 3; j++) path[j] = ""; // untere Ebenen zurücksetzen
+    renderCategory(path);
+  }));
+
   function openEditor(ad) {
     editing = ad;
     editImages = [...(ad?.images || [])];
@@ -186,7 +239,20 @@
     F.description.value = ad?.description || "";
     F.price.value = ad?.price || "";
     F.priceType.value = ad?.priceType || "NEGOTIABLE";
-    F.category.value = (ad?.category || []).join(" › ");
+    const cat = ad?.category || [];
+    catTouched = false;
+    catTail = cat.slice(3);
+    renderCategory(cat.slice(0, 3));
+    const d = ad?.details || {};
+    F.brand.value = d.brand || "";
+    F.size.value = d.size || "";
+    for (const [name, value] of [["condition", d.condition], ["color", d.color]]) {
+      const sel = F[name];
+      sel.querySelector("option[data-extra]")?.remove();
+      if (value && ![...sel.options].some((o) => o.value === value)) sel.append(h("option", { "data-extra": "1" }, value));
+      sel.value = value || "";
+    }
+    $("#brand-list").replaceChildren(...[...new Set(ads.map((a) => a.details?.brand).filter(Boolean))].sort().map((b) => h("option", { value: b })));
     F.tags.value = (ad?.tags || []).join(", ");
     renderEditorImages();
     dialog.returnValue = ""; // sonst speichert Escape mit dem Wert vom letzten Mal
@@ -228,7 +294,11 @@
       description: F.description.value.trim(),
       price: F.price.value.trim().replace(",", "."),
       priceType: F.priceType.value,
-      category: split(F.category.value, /›|>/),
+      category: currentCategory(),
+      details: {
+        ...(editing?.details || {}),
+        brand: F.brand.value.trim(), size: F.size.value.trim(), condition: F.condition.value, color: F.color.value
+      },
       tags: split(F.tags.value, ","),
       images: editImages
     });

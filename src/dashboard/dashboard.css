@@ -98,6 +98,11 @@ textarea.input { resize: vertical; }
 .dialog form { display: grid; gap: 12px; padding: 20px; }
 .dialog h2 { margin: 0; font-size: 20px; }
 .dialog label, .label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.catpick { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; min-width: 0; }
+.catpick legend { padding: 0; margin-bottom: 4px; }
+.catpick select:disabled { opacity: .5; }
+#cat-preview { margin: 0; }
+#cat-preview b { color: var(--accent); font-weight: 600; }
 .thumbs { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
 .thumb { position: relative; }
 .thumb img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); display: block; }

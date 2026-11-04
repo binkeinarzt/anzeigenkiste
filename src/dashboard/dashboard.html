@@ -96,7 +96,43 @@
           </select>
         </label>
       </div>
-      <label>Kategorie (mit › trennen) <input name="category" class="input" placeholder="Elektronik › Handy & Telefon"></label>
+      <fieldset class="catpick">
+        <legend class="label">Kategorie</legend>
+        <div class="row">
+          <label class="grow">Bereich <select id="cat-1" class="input"></select></label>
+          <label class="grow">Art <select id="cat-2" class="input"></select></label>
+          <label class="grow">Unterkategorie <select id="cat-3" class="input"></select></label>
+        </div>
+        <p id="cat-preview" class="muted small"></p>
+      </fieldset>
+      <div class="row">
+        <label class="grow">Marke <input name="brand" class="input" maxlength="100" placeholder="z. B. Nike" list="brand-list"></label>
+        <label class="grow">Größe <input name="size" class="input" maxlength="50" placeholder="z. B. M, 38 oder 42,5"></label>
+      </div>
+      <div class="row">
+        <label class="grow">Zustand
+          <select name="condition" class="input">
+            <option value="">–</option>
+            <option>Neu mit Etikett</option>
+            <option>Neu ohne Etikett</option>
+            <option>Sehr gut</option>
+            <option>Gut</option>
+            <option>Zufriedenstellend</option>
+          </select>
+        </label>
+        <label class="grow">Farbe
+          <select name="color" class="input">
+            <option value="">–</option>
+            <option>Schwarz</option><option>Weiß</option><option>Grau</option><option>Silber</option>
+            <option>Beige</option><option>Creme</option><option>Braun</option><option>Khaki</option>
+            <option>Blau</option><option>Marineblau</option><option>Hellblau</option><option>Türkis</option>
+            <option>Grün</option><option>Dunkelgrün</option><option>Gelb</option><option>Gold</option>
+            <option>Orange</option><option>Rot</option><option>Bordeaux</option><option>Rosa</option>
+            <option>Pink</option><option>Lila</option><option>Bunt</option>
+          </select>
+        </label>
+      </div>
+      <datalist id="brand-list"></datalist>
       <label>Schlagwörter (mit Komma trennen) <input name="tags" class="input" placeholder="Lager A, Winter"></label>
       <div>
         <span class="label">Bilder</span>
@@ -131,6 +167,8 @@
   <script src="../lib/dom.js"></script>
   <script src="../lib/platforms.js"></script>
   <script src="../lib/parse-product.js"></script>
+  <script src="../lib/mapping.js"></script>
+  <script src="../lib/categories.js"></script>
   <script src="dashboard.js"></script>
 </body>
 </html>

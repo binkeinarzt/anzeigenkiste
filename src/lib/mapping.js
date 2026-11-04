@@ -205,7 +205,7 @@
     const add = (name, label, wanted, fallback = []) => { if (wanted.filter(Boolean).length || fallback.length) attrs.push({ name, label, wanted: wanted.filter(Boolean), fallback }); };
     let cat = null;
 
-    if ((female || male) && has(p, "schuh") && !has(p, "schuhpflege")) {
+    if ((female || male) && has(p, "schuh") && !has(p, "schuhpflege", "handschuh")) {
       cat = female ? KA.damenSchuhe : KA.herrenSchuhe;
       add("art", "Art", kaWanted(shoeArt(rest, female)));
       if (sz.number) add("groesse", "Größe", [sz.number, sz.number.replace(".", ",")]);
@@ -228,7 +228,7 @@
       else if (sz.letter) add("groesse", "Größe", [sz.letter]);
     } else if (kids && has(p, "spielzeug", "spiel")) {
       cat = KA.spielzeug;
-    } else if (kids && has(p, "schuh")) {
+    } else if (kids && has(p, "schuh") && !has(p, "handschuh")) {
       cat = KA.kinderSchuhe;
       const g = has(p, "maedchen") ? "maedchen" : has(p, "jung") ? "jungen" : "unisex";
       add("geschlecht", "Geschlecht", kaWanted(g));

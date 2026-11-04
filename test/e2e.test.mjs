@@ -326,6 +326,44 @@ try {
   assert.equal(whs.submitted, false);
   console.log("✓ willhaben: Text im Editor, Damen-Kategorie, Nike, 38, Neu, Rosa, Preis – kein Entwurf, nichts abgeschickt");
 
+  // 13) Neue Anzeige im Dashboard: Kategorie per Auswahl statt Tippen, mit Vorschau für Kleinanzeigen
+  await dash.bringToFront();
+  await dash.evaluate(() => [...document.querySelectorAll(".tab")].find((t) => t.dataset.tab === "ads").click());
+  await click(dash, "#new-ad");
+  await dash.waitForSelector("#editor[open]");
+  assert.equal(await dash.$eval("#cat-2", (e) => e.disabled), true, "Art erst nach dem Bereich wählbar");
+  await dash.type("input[name=title]", "Sommerkleid Zara");
+  await dash.select("#cat-1", "Damen");
+  await dash.select("#cat-2", "Kleidung");
+  assert.ok((await dash.$$eval("#cat-3 option", (o) => o.map((x) => x.value))).includes("Kleider"));
+  await dash.select("#cat-3", "Kleider");
+  assert.match(await dash.$eval("#cat-preview", (e) => e.innerText), /Kleinanzeigen: Damenbekleidung › Röcke & Kleider/);
+  await dash.type("input[name=brand]", "Zara");
+  await dash.type("input[name=size]", "M");
+  await dash.select("select[name=condition]", "Sehr gut");
+  await dash.select("select[name=color]", "Blau");
+  await dash.type("input[name=price]", "15");
+  await click(dash, "#editor button[value=save]");
+  let created = null;
+  for (let i = 0; i < 20 && !created; i++) {
+    await new Promise((r) => setTimeout(r, 200));
+    created = await dash.evaluate(async () => (await AK.store.getAdList()).find((a) => a.title === "Sommerkleid Zara"));
+  }
+  assert.deepEqual(created.category, ["Damen", "Kleidung", "Kleider"]);
+  assert.deepEqual(created.details, { brand: "Zara", size: "M", condition: "Sehr gut", color: "Blau", material: "" });
+
+  // Vinted-Anzeige bearbeiten: übernommener 4-stufiger Pfad bleibt erhalten, solange man ihn nicht ändert
+  await dash.evaluate(() => [...document.querySelectorAll(".item")].find((i) => i.textContent.includes("Nike Pullover"))
+    .querySelectorAll(".actions button")[1].click());
+  await dash.waitForSelector("#editor[open]");
+  assert.equal(await dash.$eval("#cat-3", (e) => e.value), "Pullover & Strickpullover", "Vinted-Unterkategorie angezeigt, auch wenn nicht im Baum");
+  await click(dash, "#editor button[value=save]");
+  await new Promise((r) => setTimeout(r, 500));
+  const kept = await dash.evaluate(async () => (await AK.store.getAdList()).find((a) => a.title === "Nike Pullover"));
+  assert.deepEqual(kept.category, ["Damen", "Kleidung", "Pullover & Strickpullover", "Hoodies & Sweaters"]);
+  assert.equal(kept.details.color, "Rosa", "Farbe aus Vinted bleibt erhalten");
+  console.log("✓ Dashboard: Kategorie per Auswahl mit Vorschau, Marke/Größe/Zustand/Farbe, Vinted-Pfade bleiben erhalten");
+
   console.log("\nAlle E2E-Tests bestanden.");
 } finally {
   await browser.close();

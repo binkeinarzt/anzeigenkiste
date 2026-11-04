@@ -57,10 +57,44 @@ assert.deepEqual(attr(m, "condition"), ["like_new", "Sehr Gut"]);
 m = toKleinanzeigen({ category: ["Unterhaltung", "Bücher"], details: {} });
 assert.equal(m.categoryId, null);
 
+// Jede Kategorie aus der Auswahl im Dashboard muss eindeutig abgebildet werden
+new Function(readFileSync(new URL("../src/lib/categories.js", import.meta.url), "utf8"))();
+const TREE = globalThis.AK.CATEGORY_TREE;
+const expected = {
+  "Damen›Kleidung": 154, "Herren›Kleidung": 160, "Damen›Schuhe": 159, "Herren›Schuhe": 158,
+  "Damen›Taschen": 156, "Herren›Taschen": 156, "Damen›Beauty": 224, "Herren›Pflege": 224,
+  "Kinder›Mädchen": 22, "Kinder›Jungs": 22, "Kinder›Spielzeug": 23, "Home›Dekoration": 246, "Sport›Sport & Camping": 230
+};
+let checked = 0;
+for (const [root, groups] of Object.entries(TREE)) {
+  for (const [group, leaves] of Object.entries(groups)) {
+    for (const leaf of leaves) {
+      const m = toKleinanzeigen({ category: [root, group, leaf], details: {} });
+      const key = `${root}›${group}`;
+      let want = expected[key];
+      if (group === "Accessoires") want = /schmuck|uhren/i.test(leaf) ? 157 : 156;
+      if (/^(Mädchen|Jungs)$/.test(group) && leaf === "Schuhe") want = 19;
+      assert.equal(m.categoryId, want, `${root} › ${group} › ${leaf}`);
+      checked++;
+    }
+  }
+}
+// Stichproben für die Art innerhalb der Kategorie
+const art = (path) => { const at = toKleinanzeigen({ category: path, details: {} }).attrs; return (at.find((a) => a.name === "type") || at.find((a) => a.name === "art"))?.wanted[0]; };
+assert.equal(art(["Herren", "Accessoires", "Mützen & Hüte"]), "muetzen_schals_handschuhe");
+assert.equal(art(["Damen", "Kleidung", "Kleider"]), "roecke_kleider");
+assert.equal(art(["Damen", "Kleidung", "Blusen & Hemden"]), "hemden_blusen");
+assert.equal(art(["Herren", "Kleidung", "T-Shirts & Tops"]), "shirts");
+assert.equal(art(["Herren", "Schuhe", "Halbschuhe & Schnürschuhe"]), "halb_schnuerschuhe");
+assert.equal(art(["Damen", "Schuhe", "Pumps & High Heels"]), "pumps");
+assert.equal(art(["Kinder", "Mädchen", "Bodys & Strampler"]), "bodys_strampler");
+// Vinted: Handschuhe sind keine Schuhe
+assert.equal(toKleinanzeigen({ category: ["Damen", "Accessoires", "Handschuhe"], details: {} }).categoryId, 156);
+
 // Hilfsfunktionen
 assert.equal(condition("Zufriedenstellend"), "alright");
 assert.deepEqual(colors("Grau, Schwarz"), ["Grau", "grau"]);
 assert.equal(size("XXL").letter, "XXL");
 assert.equal(size("Einheitsgröße").oneSize, true);
 
-console.log("✓ Zuordnungs-Tests bestanden (Vinted → Kleinanzeigen)");
+console.log(`✓ Zuordnungs-Tests bestanden (Vinted → Kleinanzeigen, ${checked} Kategorien der Auswahl geprüft)`);
