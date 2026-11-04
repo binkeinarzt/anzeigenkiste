@@ -1,6 +1,6 @@
 {
   "name": "anzeigenkiste",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "description": "Open-Source-Browsererweiterung: Kleinanzeigen-Anzeigen sichern, neu inserieren und zu anderen Plattformen übertragen.",
   "license": "MIT",

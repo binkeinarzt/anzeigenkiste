@@ -1,4 +1,4 @@
-// Übertragen auf andere Plattformen (Vinted, eBay, willhaben, Facebook, markt.de, Quoka).
+// Übertragen auf Vinted und willhaben.
 // Läuft auf jeder Seite der Plattform, wird aber nur aktiv, wenn im Dashboard ein Auftrag
 // für diese Plattform offen ist. Der Ausfüll-Motor (lib/autofill.js) füllt jedes Feld, sobald es
 // erscheint – auch Felder, die erst nach der Kategoriewahl auftauchen. Kopier-Knöpfe bleiben

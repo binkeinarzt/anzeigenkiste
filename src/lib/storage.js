@@ -24,7 +24,7 @@
   const str = (v, max) => (typeof v === "string" ? v.slice(0, max) : typeof v === "number" ? String(v).slice(0, max) : "");
   const strList = (v, n, max) => (Array.isArray(v) ? v.filter((x) => typeof x === "string").slice(0, n).map((x) => x.slice(0, max)) : []);
   const IMAGE_RE = /^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/;
-  const SOURCES = ["kleinanzeigen", "vinted", "ebay", "willhaben", "facebook", "marktde", "quoka"];
+  const SOURCES = ["kleinanzeigen", "vinted", "willhaben"];
 
   function safeUrl(v) {
     try { const u = new URL(String(v)); return u.protocol === "https:" ? u.href.slice(0, 500) : ""; } catch { return ""; }
@@ -135,7 +135,7 @@
   }
 
   // Offene Aufträge je Plattform, damit mehrere Tabs gleichzeitig ausgefüllt werden können.
-  // pending = { [platform]: { adId, at } }, platform z. B. "kleinanzeigen", "vinted", "facebook"
+  // pending = { [platform]: { adId, at } }, platform z. B. "kleinanzeigen", "vinted", "willhaben"
   const PENDING_TTL = 15 * 60 * 1000;
 
   async function setPending(platform, adId) {

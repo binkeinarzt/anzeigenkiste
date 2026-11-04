@@ -1,4 +1,4 @@
-// Gegenrichtung: Artikel von Vinted, eBay oder willhaben in die Kiste holen,
+// Gegenrichtung: Artikel von Vinted oder willhaben in die Kiste holen,
 // damit sie danach auf Kleinanzeigen (oder woanders) inseriert werden können.
 (function () {
   const AK = globalThis.AK;
@@ -12,7 +12,6 @@
   // Vinted und willhaben wechseln Artikel ohne Neuladen; die eingebetteten Daten im DOM gehören
   // dann noch zum ersten Artikel. Deshalb die Seite frisch laden und das HTML auswerten.
   async function currentDocument() {
-    if (platform === "ebay") return document;
     try {
       const res = await fetch(location.href, { credentials: "include" });
       if (res.ok) return new DOMParser().parseFromString(await res.text(), "text/html");
@@ -30,12 +29,6 @@
     }
     if (!data.title) throw new Error("Auf dieser Seite wurde kein Artikel erkannt.");
 
-    // eBay lädt die Beschreibung in einem eigenen Frame von ebaydesc.com
-    if (data.descriptionUrl && !data.description) {
-      const html = await AK.api.runtime.sendMessage({ type: "fetchText", url: data.descriptionUrl });
-      if (typeof html === "string") data.description = AK.parseProduct.htmlToText(html);
-    }
-    delete data.descriptionUrl;
 
     const images = await AK.api.runtime.sendMessage({ type: "fetchImages", urls: data.imageUrls });
     delete data.imageUrls;

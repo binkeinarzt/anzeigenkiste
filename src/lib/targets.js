@@ -170,7 +170,7 @@
     return steps.filter(Boolean);
   }
 
-  // Allgemein (Vinted, eBay, Facebook, markt.de, Quoka): Titel, Text, Preis, Bilder
+  // Allgemein (derzeit Vinted): Titel, Text, Preis, Bilder
   // plus Merkmale, die über ihre Beschriftung gefunden werden.
   function generic(ad, P) {
     const WORDS = {

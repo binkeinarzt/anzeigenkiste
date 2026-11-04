@@ -1,9 +1,8 @@
-// Hintergrund: lädt Bilder (CORS-frei dank host_permissions), lädt eBay-Beschreibungen
-// und öffnet/schließt Tabs. Alle Eingaben kommen letztlich von Webseiten und werden geprüft.
+// Hintergrund: lädt Bilder (CORS-frei dank host_permissions) und öffnet/schließt Tabs. Alle Eingaben kommen letztlich von Webseiten und werden geprüft.
 const api = globalThis.browser ?? globalThis.chrome;
 
 // Bilder nur von den Bildservern der unterstützten Plattformen (oder bereits eingebettete data:-Bilder)
-const IMAGE_HOSTS = [/(^|\.)kleinanzeigen\.de$/, /(^|\.)vinted\.net$/, /(^|\.)vinted\.(de|at)$/, /(^|\.)ebayimg\.com$/, /(^|\.)willhaben\.at$/];
+const IMAGE_HOSTS = [/(^|\.)kleinanzeigen\.de$/, /(^|\.)vinted\.net$/, /(^|\.)vinted\.(de|at)$/, /(^|\.)willhaben\.at$/];
 const MAX_IMAGES = 25;
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 
@@ -70,13 +69,6 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const results = await Promise.allSettled(urls.map(toDataUrl));
         results.filter((r) => r.status === "rejected").forEach((r) => console.warn("[Anzeigenkiste]", r.reason));
         return results.filter((r) => r.status === "fulfilled").map((r) => r.value);
-      }
-      case "fetchText": {
-        // Nur für eBay-Beschreibungen (eigener Frame auf ebaydesc.com)
-        const u = new URL(msg.url);
-        if (u.protocol !== "https:" || !/(^|\.)ebaydesc\.com$/.test(u.hostname)) return null;
-        const res = await fetch(u, { credentials: "omit", redirect: "error" });
-        return res.ok ? (await res.text()).slice(0, 500_000) : null;
       }
       case "closeTab":
         // Nur Tabs, die das Dashboard zum Nachladen geöffnet hat (siehe dashboard.js)

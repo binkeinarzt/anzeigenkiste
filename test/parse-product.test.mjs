@@ -1,8 +1,7 @@
-// Testet das Auslesen von Artikelseiten auf Vinted, willhaben und eBay.
+// Testet das Auslesen von Artikelseiten auf Vinted und willhaben.
 // Die Fixtures bilden den echten Aufbau nach (Stand November 2026):
 //   Vinted:    JSON-LD mit nur 1 Bild, Galerie zeigt 5, alle 8 stecken escaped im Next.js-Payload
 //   willhaben: JSON-LD mit nur 1 Bild, alle Bilder und der Text in __NEXT_DATA__
-//   eBay:      JSON-LD mit 5 Bildern, Galerie mit 7
 import { JSDOM } from "jsdom";
 import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
@@ -63,19 +62,6 @@ assert.equal(w.price, "10");
 assert.equal(w.location, "4061 Pasching");
 assert.equal(w.sourceId, "willhaben:2105215990");
 
-// ---------- eBay ----------
-const eIds = ["SJcA", "2kAA", "NdoA", "Pl4A", "Ae0A", "Xy1A", "Zz2A"];
-const eb = page(`<html><head><script type="application/ld+json">${JSON.stringify({ "@type": "Product", name: "herren jacke winter", description: "", image: eIds.slice(0, 5).map((id) => `https://i.ebayimg.com/images/g/${id}/s-l1600.jpg`), offers: { price: "85.0" } })}</script></head>
-  <body><div class="ux-image-carousel">${eIds.map((id) => `<div class="ux-image-carousel-item"><img src="https://i.ebayimg.com/images/g/${id}/s-l140.jpg" data-zoom-src="https://i.ebayimg.com/images/g/${id}/s-l1600.jpg"></div>`).join("")}
-  <div class="ux-image-carousel-item"><img src="https://i.ebayimg.com/images/g/SJcA/s-l500.jpg"></div></div>
-  <iframe id="desc_ifr" src="https://itm.ebaydesc.com/itmdesc/920060536921?t=0"></iframe></body></html>`);
-const e = parseProductPage(eb, "https://www.ebay.de/itm/920060536921", "ebay");
-assert.equal(e.imageUrls.length, 7, "eBay: alle 7 Galeriebilder, nicht nur 5 aus JSON-LD");
-assert.ok(e.imageUrls.every((u) => u.endsWith("/s-l1600.jpg")), "eBay: große Variante");
-assert.equal(e.price, "85");
-assert.equal(e.descriptionUrl, "https://itm.ebaydesc.com/itmdesc/920060536921?t=0");
-assert.equal(e.sourceId, "ebay:920060536921");
-
 assert.equal(globalThis.AK.parseProduct.htmlToText("<div><p>Zeile 1</p><p>Zeile 2</p><script>x()</script></div>"), "Zeile 1\nZeile 2");
 
-console.log("✓ Artikelseiten-Tests bestanden (Vinted 8/8, willhaben 3/3, eBay 7/7)");
+console.log("✓ Artikelseiten-Tests bestanden (Vinted 8/8, willhaben 3/3)");

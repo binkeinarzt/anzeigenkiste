@@ -1,9 +1,8 @@
-// Liest eine Artikelseite von Vinted, eBay oder willhaben aus.
-// Grundlage sind die strukturierten Daten (JSON-LD „Product“), die aber auf allen drei Plattformen
+// Liest eine Artikelseite von Vinted oder willhaben aus.
+// Grundlage sind die strukturierten Daten (JSON-LD „Product“), die aber auf beiden Plattformen
 // nur einen Teil der Bilder enthalten. Deshalb hat jede Plattform zusätzlich einen eigenen Pfad:
 //   Vinted:    eingebettete Seitendaten, Array "photos" (alle Fotos, auch die hinter „+3“)
 //   willhaben: __NEXT_DATA__ → advertDetails (alle Bilder, echte Beschreibung, Ort)
-//   eBay:      Bildergalerie (alle Fotos in groß); Beschreibung liegt in einem eigenen Frame
 (function () {
   const AK = globalThis.AK;
   const clean = (s) => (s || "").replace(/ /g, " ").replace(/[ \t]+/g, " ").trim();
@@ -151,18 +150,6 @@
 
   const whAttr = (ad, name) => ad?.attributes?.attribute?.find((a) => a.name === name)?.values?.[0] || "";
 
-  // ---------- eBay ----------
-
-  function ebayImages(doc) {
-    const ids = [];
-    for (const img of doc.querySelectorAll(".ux-image-carousel-item img, [data-testid='ux-image-carousel'] img")) {
-      const u = img.getAttribute("data-zoom-src") || img.getAttribute("data-src") || img.getAttribute("src") || "";
-      const id = u.match(/ebayimg\.com\/images\/g\/([^/]+)\//)?.[1];
-      if (id && !ids.includes(id)) ids.push(id);
-    }
-    return ids.map((id) => `https://i.ebayimg.com/images/g/${id}/s-l1600.jpg`);
-  }
-
   // ---------- Gesamt ----------
 
   function parseProductPage(doc, url, source) {
@@ -170,7 +157,7 @@
     const offer = Array.isArray(p.offers) ? p.offers[0] : p.offers || {};
     const ldImgs = [].concat(p.image || []).map((i) => (typeof i === "string" ? i : i?.url || i?.contentUrl));
     const og = meta(doc, "og:image");
-    const m = (url || "").match(/\/(?:items|itm)\/(?:[^/]*\/)?(\d{6,})|-(\d{6,})\/?$|\/(\d{6,})\/?$/);
+    const m = (url || "").match(/\/items\/(?:[^/]*\/)?(\d{6,})|-(\d{6,})\/?$|\/(\d{6,})\/?$/);
 
     const data = {
       source,
@@ -181,8 +168,7 @@
       price: toPrice(offer.price ?? offer.lowPrice ?? (meta(doc, "product:price:amount") || meta(doc, "og:price:amount"))),
       category: typeof p.category === "string" ? p.category.split(/\s*[>›/]\s*/).filter(Boolean) : [],
       location: "",
-      imageUrls: [],
-      descriptionUrl: ""
+      imageUrls: []
     };
 
     let images = [];
@@ -209,9 +195,6 @@
         data.location = [whAttr(ad, "LOCATION/POSTCODE"), whAttr(ad, "LOCATION/ADDRESS_2")].filter(Boolean).join(" ");
         if (ad.id) data.sourceId = `willhaben:${ad.id}`;
       }
-    } else if (source === "ebay") {
-      images = ebayImages(doc);
-      data.descriptionUrl = doc.querySelector("#desc_ifr")?.getAttribute("src") || "";
     }
 
     data.imageUrls = uniq([...images, ...(images.length ? [] : ldImgs), ...(images.length || ldImgs.length ? [] : [og])])

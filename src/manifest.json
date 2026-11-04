@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Anzeigenkiste",
   "short_name": "Anzeigenkiste",
-  "version": "0.5.0",
-  "description": "Open Source: Anzeigen sichern, neu inserieren und zwischen Kleinanzeigen, Vinted, eBay, willhaben, Facebook, markt.de und Quoka übertragen. Alles lokal, kostenlos.",
+  "version": "0.6.0",
+  "description": "Open Source: Anzeigen sichern, neu inserieren und zwischen Kleinanzeigen, Vinted und willhaben übertragen. Alles lokal, kostenlos.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -30,15 +30,7 @@
     "https://*.vinted.de/*",
     "https://*.vinted.at/*",
     "https://*.vinted.net/*",
-    "https://*.ebay.de/*",
-    "https://*.ebay.at/*",
-    "https://*.ebayimg.com/*",
-    "https://*.ebaydesc.com/*",
-    "https://*.willhaben.at/*",
-    "https://www.facebook.com/*",
-    "https://*.fbcdn.net/*",
-    "https://*.markt.de/*",
-    "https://*.quoka.de/*"
+    "https://*.willhaben.at/*"
   ],
   "content_scripts": [
     {
@@ -65,12 +57,7 @@
       "matches": [
         "https://www.vinted.de/*",
         "https://www.vinted.at/*",
-        "https://www.ebay.de/*",
-        "https://www.ebay.at/*",
-        "https://www.willhaben.at/*",
-        "https://www.facebook.com/marketplace/*",
-        "https://www.markt.de/*",
-        "https://www.quoka.de/*"
+        "https://www.willhaben.at/*"
       ],
       "js": [
         "lib/ui-css.js",

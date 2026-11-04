@@ -1,6 +1,6 @@
 # Anzeigenkiste
 
-Freie Browsererweiterung für alle, die auf Kleinanzeigen verkaufen. Anzeigen sichern, neu inserieren, Textvorlagen im Postfach nutzen und Anzeigen zwischen Kleinanzeigen, Vinted, eBay, willhaben, Facebook Marketplace, markt.de und Quoka übertragen.
+Freie Browsererweiterung für alle, die auf Kleinanzeigen verkaufen. Anzeigen sichern, neu inserieren, Textvorlagen im Postfach nutzen und Anzeigen zwischen Kleinanzeigen, Vinted und willhaben übertragen.
 
 **Open Source (MIT) · ohne Konto · ohne Abo · alle Daten bleiben lokal im Browser**
 
@@ -12,9 +12,9 @@ Freie Browsererweiterung für alle, die auf Kleinanzeigen verkaufen. Anzeigen si
 |---|---|---|
 | Anzeige sichern | jede Anzeige (`/s-anzeige/…`) | Knopf „In Anzeigenkiste speichern“ sichert Titel, Text, Preis, Kategorie, Merkmale und Bilder |
 | Alle sichern | „Meine Anzeigen“ | Panel sichert alle sichtbaren Anzeigen nacheinander (bewusst gedrosselt) |
-| Inserieren | Dashboard → „Inserieren …“ | Plattformen ankreuzen (Kleinanzeigen, Vinted, eBay, willhaben, Facebook, markt.de, Quoka). Je Plattform öffnet sich ein Tab, das Formular wird mit Titel, Text, Preis und Bildern ausgefüllt. Kopier-Knöpfe als Rückfall |
+| Inserieren | Dashboard → „Inserieren …“ | Plattformen ankreuzen (Kleinanzeigen, Vinted, willhaben). Je Plattform öffnet sich ein Tab, das Formular wird mit Titel, Text, Preis und Bildern ausgefüllt. Kopier-Knöpfe als Rückfall |
 | Vinted als Vorlage | Artikel von Vinted holen, dann „Inserieren …“ | Kategorie, Marke, Größe, Zustand und Farbe werden von Vinted übernommen und auf Kleinanzeigen und willhaben automatisch gesetzt – auch Felder, die erst nach der Kategoriewahl erscheinen |
-| Gegenrichtung | Artikelseiten auf Vinted, eBay, willhaben | Knopf „In Anzeigenkiste speichern“ liest den Artikel aus (JSON-LD, sonst Open Graph) |
+| Gegenrichtung | Artikelseiten auf Vinted und willhaben | Knopf „In Anzeigenkiste speichern“ liest den Artikel aus (JSON-LD, sonst Open Graph) |
 | Direkt kaufen | Dashboard → Einstellungen → Kleinanzeigen | „Direkt kaufen“ automatisch auf Ja (inkl. „Versand möglich“) oder Nein setzen, oder selbst wählen |
 | Textvorlagen | Postfach (`/m-nachrichten…`) | Vorlagen-Chips über dem Nachrichtenfeld, Klick fügt Text ein |
 | Übersicht | Dashboard | Liste mit Preis, Ort, Schlagwörtern; Suche, Sortierung, Bearbeiten, eigene Anzeigen anlegen |
@@ -51,8 +51,8 @@ src/
     parse-product.js     liest Artikelseiten anderer Plattformen aus
   content/
     kleinanzeigen.js     Speichern, Meine Anzeigen, Formular ausfüllen, Textvorlagen
-    export.js            füllt Formulare auf Vinted, eBay, willhaben, Facebook, markt.de, Quoka
-    import.js            speichert Artikel von Vinted, eBay, willhaben in die Kiste
+    export.js            füllt Formulare auf Vinted und willhaben
+    import.js            speichert Artikel von Vinted und willhaben in die Kiste
     panel.css
   dashboard/             Übersicht, Editor, Vorlagen, Einstellungen
   popup/
@@ -65,7 +65,7 @@ test/                    Parser-Test (jsdom) und E2E-Test (echtes Chrome)
 ```bash
 npm test             # Parser gegen test/fixture-ad.html
 npm run test:e2e     # baut, startet Chrome mit der Erweiterung und testet: Speichern → Dashboard →
-                     # Bearbeiten → Inserieren-Dialog → Kleinanzeigen, Vinted, Facebook, Quoka →
+                     # Bearbeiten → Inserieren-Dialog → Kleinanzeigen, Vinted, willhaben →
                      # Textvorlage → Artikel von Vinted holen
 ```
 
@@ -74,7 +74,7 @@ Der E2E-Test fängt die Kleinanzeigen- und Vinted-Seiten ab und liefert nachgeba
 ## Wenn eine Plattform ihr Layout ändert
 
 - Kleinanzeigen: nur `src/lib/selectors.js` anpassen. Jeder Eintrag ist eine Liste, der erste Treffer gewinnt.
-- Andere Plattformen: `fields` in `src/lib/platforms.js`. Für markt.de und Quoka sind nur Heuristiken hinterlegt, weil die Formulare nicht öffentlich einsehbar sind. Dort öffnet sich die Startseite; sobald der Nutzer das Formular öffnet, füllt die Kiste es aus. Greift nichts, sucht eine Heuristik nach Feldern mit „Titel“, „Beschreibung“, „Preis“.
+- Vinted und willhaben: `fields` in `src/lib/platforms.js` bzw. `src/lib/targets.js`. Greift nichts, sucht eine Heuristik nach Feldern mit „Titel“, „Beschreibung“, „Preis“.
 
 ## Veröffentlichen
 
@@ -90,4 +90,4 @@ Alles bleibt lokal im Browser, nichts wird automatisch veröffentlicht, die Ober
 
 ## Rechtliches
 
-Anzeigenkiste ist ein unabhängiges Projekt und steht in keiner Verbindung zu Kleinanzeigen, Vinted, eBay oder willhaben. Alle Marken gehören ihren Inhabern. Nutzung auf eigenes Risiko, siehe [LICENSE](LICENSE).
+Anzeigenkiste ist ein unabhängiges Projekt und steht in keiner Verbindung zu Kleinanzeigen, Vinted oder willhaben. Alle Marken gehören ihren Inhabern. Nutzung auf eigenes Risiko, siehe [LICENSE](LICENSE).

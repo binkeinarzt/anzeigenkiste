@@ -1,7 +1,7 @@
 // End-to-End-Test im echten Chrome mit der gebauten Erweiterung.
 // Alle Plattform-Seiten werden abgefangen und durch nachgebaute Seiten ersetzt.
 // Getestet: Speichern auf Kleinanzeigen → Dashboard → Bearbeiten → Inserieren-Dialog (mehrere Plattformen)
-// → Formulare auf Kleinanzeigen, Vinted, Facebook, Quoka (mit Warten auf das Formular) → Textvorlagen
+// → Formulare auf Kleinanzeigen und Vinted (mit Warten auf das Formular, z. B. nach dem Login) → Textvorlagen
 // → WebP-Bilder werden zu JPEG → Artikel von Vinted holen (Kategorie, Marke, Größe, Zustand, Farbe)
 // → damit Kleinanzeigen und willhaben ausfüllen, inkl. Feldern, die erst nach der Kategoriewahl erscheinen.
 // Aufruf: npm run test:e2e   (braucht Chrome + puppeteer-core)
@@ -18,14 +18,8 @@ const PAGES = {
   "www.kleinanzeigen.de/p-anzeige-aufgeben-schritt2.html": readFileSync(new URL("./mock-kleinanzeigen-post.html", import.meta.url), "utf8"),
   "www.willhaben.at/iad/anzeigenaufgabe/marktplatz": readFileSync(new URL("./mock-willhaben-post.html", import.meta.url), "utf8"),
   "www.kleinanzeigen.de/m-nachrichten.html": html(`<div class="chat"><textarea name="message"></textarea></div>`),
-  "www.vinted.de/items/new": html(`<input data-testid="title--input"><textarea data-testid="description--input"></textarea>
-    <input data-testid="price-input--input"><input type="file" multiple accept="image/*">`),
-  "www.facebook.com/marketplace/create/item": html(`
-    <label aria-label="Titel"><span>Titel</span><input type="text"></label>
-    <label aria-label="Preis"><span>Preis</span><input type="text"></label>
-    <label aria-label="Beschreibung"><span>Beschreibung</span><textarea></textarea></label>
-    <input type="file" multiple accept="image/*,image/heif">`),
-  "www.quoka.de/": html(`<h1>Quoka Startseite</h1><a href="#">Kostenlos inserieren</a>`),
+  // Vinted-Verkaufsseite, die das Formular erst nach dem Laden einblendet (wie nach einem Login)
+  "www.vinted.de/items/new": html(`<h1>Artikel verkaufen</h1>`),
   "www.vinted.de/items/10652437387-nike-pullover": vintedItem()
 };
 
@@ -130,22 +124,23 @@ try {
   await dash.evaluate(() => [...document.querySelectorAll(".item .actions button")].find((b) => b.textContent.startsWith("Inserieren")).click());
   await dash.waitForSelector("#publish[open] #pub-vinted");
   await dash.evaluate(() => {
-    for (const k of ["kleinanzeigen", "vinted", "facebook", "quoka"]) document.getElementById(`pub-${k}`).checked = true;
+    for (const k of ["kleinanzeigen", "vinted", "willhaben"]) document.getElementById(`pub-${k}`).checked = true;
   });
   await click(dash, "#publish button[value=go]");
   // Hintergrund-Tabs drosseln waitForFunction; deshalb von Node aus abfragen
   let keys = [];
-  for (let i = 0; i < 20 && keys.length < 4; i++) {
+  for (let i = 0; i < 20 && keys.length < 3; i++) {
     await new Promise((r) => setTimeout(r, 300));
     keys = await dash.evaluate(async () => Object.keys((await chrome.storage.local.get("pending")).pending || {}));
   }
-  assert.deepEqual(keys.sort(), ["facebook", "kleinanzeigen", "quoka", "vinted"]);
-  console.log("✓ Inserieren-Dialog legt Aufträge für 4 Plattformen an");
+  assert.deepEqual(keys.sort(), ["kleinanzeigen", "vinted", "willhaben"]);
+  assert.deepEqual(await dash.$$eval("#publish-list input", (l) => l.map((i) => i.value)), ["kleinanzeigen", "vinted", "willhaben"], "nur noch drei Plattformen");
+  console.log("✓ Inserieren-Dialog legt Aufträge für Kleinanzeigen, Vinted und willhaben an");
   // Die vom Dialog geöffneten echten Tabs schließen (im Test kein Netz); Aufträge bleiben bestehen
   for (const p of await browser.pages()) if (!/chrome-extension|about:blank|kleinanzeigen\.de\/s-anzeige/.test(p.url())) await p.close().catch(() => {});
   await dash.evaluate(async () => {
     const [a] = await AK.store.getAdList();
-    for (const k of ["kleinanzeigen", "vinted", "facebook", "quoka"]) await AK.store.setPending(k, a.id);
+    for (const k of ["kleinanzeigen", "vinted"]) await AK.store.setPending(k, a.id);
   });
 
   // 4) Kleinanzeigen-Formular (Nachbau des echten Formulars)
@@ -162,30 +157,18 @@ try {
   assert.deepEqual([ka.price, ka.files], ["999", 1]);
   console.log("✓ Kleinanzeigen ausgefüllt (inkl. Bild und Preisart VB)");
 
-  // 5) Vinted
+  // 5) Vinted: Seite ohne Formular → Warte-Panel; Formular erscheint später → wird ausgefüllt
   const vin = await fakePage("https://www.vinted.de/items/new");
+  await waitExt(vin, `(${panelText}).includes("öffne das Formular")`);
+  // Die Webseite selbst sieht vom Panel nichts (geschlossenes Shadow DOM)
+  assert.equal(await vin.evaluate(() => document.body.innerText.includes("öffne das Formular") || !!document.querySelector("ak-ui")?.shadowRoot), false, "Panel für die Webseite unsichtbar");
+  await vin.evaluate(() => document.body.insertAdjacentHTML("beforeend",
+    `<input data-testid="title--input"><textarea data-testid="description--input"></textarea><input data-testid="price-input--input"><input type="file" multiple accept="image/*" style="display:none">`));
   await vin.waitForFunction(() => document.querySelector("[data-testid='title--input']").value === "IKEA Sofa Kivik grau", { timeout: 10000 });
   assert.equal(await vin.$eval("[data-testid='price-input--input']", (e) => e.value), "999");
+  for (let i = 0; i < 20 && !(await vin.$eval("input[type=file]", (e) => e.files.length)); i++) await new Promise((r) => setTimeout(r, 200));
   assert.equal(await vin.$eval("input[type=file]", (e) => e.files.length), 1);
-  console.log("✓ Vinted ausgefüllt (inkl. Bild)");
-
-  // 6) Facebook Marketplace (Felder über aria-label des Labels)
-  const fb = await fakePage("https://www.facebook.com/marketplace/create/item");
-  await fb.waitForFunction(() => document.querySelector("label[aria-label='Titel'] input").value === "IKEA Sofa Kivik grau", { timeout: 10000 });
-  assert.equal(await fb.$eval("label[aria-label='Preis'] input", (e) => e.value), "999");
-  assert.ok((await fb.$eval("label[aria-label='Beschreibung'] textarea", (e) => e.value)).startsWith("Sehr guter"));
-  console.log("✓ Facebook Marketplace ausgefüllt");
-
-  // 7) Quoka: Startseite ohne Formular → Warte-Panel; Formular erscheint später → wird ausgefüllt
-  const qu = await fakePage("https://www.quoka.de/");
-  await waitExt(qu, `(${panelText}).includes("öffne das Formular")`);
-  // Die Webseite selbst sieht vom Panel nichts (geschlossenes Shadow DOM)
-  assert.equal(await qu.evaluate(() => document.body.innerText.includes("öffne das Formular") || !!document.querySelector("ak-ui")?.shadowRoot), false, "Panel für die Webseite unsichtbar");
-  await qu.evaluate(() => document.body.insertAdjacentHTML("beforeend",
-    `<form><label for="t">Titel der Anzeige</label><input id="t" name="headline"><textarea name="text"></textarea><input name="preis"></form>`));
-  await qu.waitForFunction(() => document.querySelector("input[name=headline]").value === "IKEA Sofa Kivik grau", { timeout: 10000 });
-  assert.equal(await qu.$eval("input[name=preis]", (e) => e.value), "999");
-  console.log("✓ Quoka: wartet auf das Formular und füllt es dann aus");
+  console.log("✓ Vinted: wartet auf das Formular und füllt es dann aus (inkl. Bild)");
 
   // 8) Textvorlagen im Postfach
   const msg = await fakePage("https://www.kleinanzeigen.de/m-nachrichten.html");

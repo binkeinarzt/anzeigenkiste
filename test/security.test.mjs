@@ -89,13 +89,14 @@ assert.equal(await send({ type: "fetchImages", urls: ["https://x"] }, { id: "fre
 await send({ type: "fetchImages", urls: [
   "https://evil.example/a.png", "http://images1.vinted.net/t/a.webp", "file:///etc/passwd",
   "https://images1.vinted.net.evil.example/a.webp", "https://images1.vinted.net/t/ok.webp",
-  "https://i.ebayimg.com/images/g/x/s-l1600.jpg", "https://img.kleinanzeigen.de/api/v1/prod-ads/images/a"
+  "https://i.ebayimg.com/images/g/x/s-l1600.jpg", "https://img.kleinanzeigen.de/api/v1/prod-ads/images/a",
+  "https://cache.willhaben.at/mmo/0/1.jpg"
 ] }, page);
 assert.deepEqual(fetched, [
   "https://images1.vinted.net/t/ok.webp",
-  "https://i.ebayimg.com/images/g/x/s-l1600.jpg",
-  "https://img.kleinanzeigen.de/api/v1/prod-ads/images/a"
-], "nur https-Bildserver der Plattformen");
+  "https://img.kleinanzeigen.de/api/v1/prod-ads/images/a",
+  "https://cache.willhaben.at/mmo/0/1.jpg"
+], "nur https-Bildserver von Kleinanzeigen, Vinted und willhaben");
 
 fetched.length = 0;
 await send({ type: "fetchImages", urls: Array.from({ length: 100 }, (_, i) => `https://images1.vinted.net/t/${i}.webp`) }, page);
@@ -103,8 +104,7 @@ assert.equal(fetched.length, 25, "höchstens 25 Bilder pro Anfrage");
 
 fetched.length = 0;
 assert.equal(await send({ type: "fetchText", url: "https://evil.example/" }, page), null);
-assert.equal(await send({ type: "fetchText", url: "http://itm.ebaydesc.com/x" }, page), null);
-assert.deepEqual(fetched, [], "fetchText nur für https ebaydesc.com");
+assert.deepEqual(fetched, [], "kein allgemeiner Text-Abruf");
 
 assert.equal(await send({ type: "registerRefreshTab", tabId: 7 }, page), false, "Webseiten-Skripte dürfen keine Tabs zum Schließen anmelden");
 await send({ type: "closeTab" }, page);
@@ -132,6 +132,7 @@ const m = JSON.parse(readFileSync(new URL("../src/manifest.json", import.meta.ur
 assert.ok(!m.web_accessible_resources, "keine für Webseiten abrufbaren Dateien (verhindert Erkennung der Erweiterung)");
 assert.ok(!m.externally_connectable, "keine Nachrichten von Webseiten");
 assert.deepEqual(m.permissions.sort(), ["storage", "unlimitedStorage"], "nur Speicher-Berechtigungen");
+assert.ok(m.host_permissions.every((h) => /kleinanzeigen\.de|vinted\.(de|at|net)|willhaben\.at/.test(h)), "nur Kleinanzeigen, Vinted, willhaben");
 assert.match(m.content_security_policy.extension_pages, /script-src 'self'/);
 assert.match(m.content_security_policy.extension_pages, /object-src 'none'/);
 
