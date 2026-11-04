@@ -35,7 +35,9 @@ async function toDataUrl(url) {
   return blobToDataUrl(blob);
 }
 
-api.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+const refreshTabs = new Set();
+
+api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
     switch (msg?.type) {
       case "fetchImages": {
@@ -51,6 +53,13 @@ api.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         const res = await fetch(u, { credentials: "omit" });
         return res.ok ? await res.text() : null;
       }
+      case "closeTab":
+        // Nur Tabs, die das Dashboard zum Nachladen geöffnet hat (siehe dashboard.js)
+        if (sender.tab?.id != null && refreshTabs.has(sender.tab.id)) { refreshTabs.delete(sender.tab.id); await api.tabs.remove(sender.tab.id); }
+        return true;
+      case "registerRefreshTab":
+        refreshTabs.add(msg.tabId);
+        return true;
       case "openTab":
         await api.tabs.create({ url: msg.url });
         return true;

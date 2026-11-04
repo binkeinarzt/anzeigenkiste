@@ -110,6 +110,11 @@
     return p;
   }
 
+  // Ergebnis eines Nachlade-Auftrags (für das Dashboard, das darauf wartet)
+  async function setRefreshResult(adId, result) {
+    await local().set({ refreshResult: { adId, result, at: Date.now() } });
+  }
+
   async function exportBackup() {
     const all = await local().get(["ads", "templates"]);
     return {
@@ -130,7 +135,7 @@
 
   AK.store = {
     uid, getAds, getAdList, getAd, saveAd, deleteAd,
-    getTemplates, setTemplates, setPending, peekPending, takePending,
+    getTemplates, setTemplates, setPending, peekPending, takePending, setRefreshResult,
     exportBackup, importBackup, DEFAULT_TEMPLATES
   };
 })();

@@ -205,12 +205,20 @@ try {
   await dash.bringToFront(); // Chrome schickt das close-Ereignis des Dialogs nur in sichtbaren Tabs
   await dash.waitForSelector(".item h3");
   dash.on("dialog", (d) => d.dismiss());
-  // Den Vinted-Abruf des Dashboards auf den Nachbau umleiten
-  await dash.setRequestInterception(true);
-  dash.on("request", (r) => {
-    const u = new URL(r.url());
-    if (u.hostname === "www.vinted.de" && PAGES[u.hostname + u.pathname]) r.respond({ status: 200, contentType: "text/html; charset=utf-8", body: PAGES[u.hostname + u.pathname] });
-    else r.continue();
+  // Wie bei Vinted beobachtet: direkte Abrufe (fetch) bekommen eine Prüfseite, nur das Öffnen
+  // der Seite im Tab liefert den Artikel. Browserweit abfangen, damit auch neu geöffnete Tabs erfasst werden.
+  const bs = await browser.target().createCDPSession();
+  await bs.send("Fetch.enable", { patterns: [{ urlPattern: "*://www.vinted.de/items/*" }] });
+  let vintedTabOpened = false;
+  bs.on("Fetch.requestPaused", (e) => {
+    const isPage = e.resourceType === "Document";
+    if (isPage) vintedTabOpened = true;
+    const body = isPage ? PAGES["www.vinted.de/items/10652437387-nike-pullover"] : "<!doctype html><html><body><p>Bitte warten, wir prüfen deinen Browser …</p></body></html>";
+    bs.send("Fetch.fulfillRequest", {
+      requestId: e.requestId, responseCode: 200,
+      responseHeaders: [{ name: "Content-Type", value: "text/html; charset=utf-8" }],
+      body: Buffer.from(body).toString("base64")
+    }).catch(() => {});
   });
   await dash.evaluate(() => [...document.querySelectorAll(".item")].find((i) => i.textContent.includes("Nike Pullover"))
     .querySelector(".actions button").click());
@@ -224,8 +232,13 @@ try {
   }
   assert.deepEqual(refreshed.details, vad.details);
   assert.deepEqual(refreshed.category, vad.category);
+  assert.ok(vintedTabOpened, "Rückfall über den Hintergrund-Tab wurde genutzt");
+  const vintedTabs = async () => (await browser.pages()).filter((p) => /vinted\.de\/items\/\d/.test(p.url())).length;
+  for (let i = 0; i < 20 && (await vintedTabs()) > 1; i++) await new Promise((r) => setTimeout(r, 300));
+  assert.equal(await vintedTabs(), 1, "Hintergrund-Tab wieder geschlossen (offen bleibt nur der Tab aus Schritt 10)");
+  await bs.send("Fetch.disable");
   for (const p of await browser.pages()) if (/kleinanzeigen\.de\/p-anzeige/.test(p.url())) await p.close().catch(() => {});
-  console.log("✓ Alte Vinted-Einträge ohne Details werden beim Inserieren nachgeladen");
+  console.log("✓ Alte Vinted-Einträge ohne Details werden über einen Hintergrund-Tab nachgeladen, Tab schließt sich wieder");
 
   // 11) Vinted-Artikel auf Kleinanzeigen: Kategorie und alle Merkmale nach Vinted
   await dash.evaluate(async (id) => { await AK.store.setPending("kleinanzeigen", id); await AK.store.setPending("willhaben", id); }, vad.id);

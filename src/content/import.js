@@ -20,10 +20,14 @@
     return document;
   }
 
-  async function capture() {
+  async function capture(extra = {}) {
     const url = location.href.split("?")[0];
-    const doc = await currentDocument();
-    const data = AK.parseProduct.parseProductPage(doc, url, platform);
+    let data = AK.parseProduct.parseProductPage(await currentDocument(), url, platform);
+    // Liefert der Abruf eine Prüfseite statt des Artikels, die geladene Seite selbst auswerten
+    if (!data.title || (platform === "vinted" && !data.details?.brand && !data.category?.length)) {
+      const live = AK.parseProduct.parseProductPage(document, url, platform);
+      if (live.title) data = live;
+    }
     if (!data.title) throw new Error("Auf dieser Seite wurde kein Artikel erkannt.");
 
     // eBay lädt die Beschreibung in einem eigenen Frame von ebaydesc.com
@@ -35,7 +39,28 @@
 
     const images = await AK.api.runtime.sendMessage({ type: "fetchImages", urls: data.imageUrls });
     delete data.imageUrls;
-    return AK.store.saveAd({ ...data, images: Array.isArray(images) ? images : [] });
+    return AK.store.saveAd({ ...data, ...extra, images: Array.isArray(images) ? images : [] });
+  }
+
+  // Auftrag vom Dashboard: fehlende Angaben eines gespeicherten Vinted-Artikels nachladen.
+  // Das Dashboard öffnet dafür diesen Artikel in einem Hintergrund-Tab; danach schließt er sich wieder.
+  async function refreshIfRequested() {
+    const p = await AK.store.peekPending(`refresh-${platform}`);
+    if (!p || !P.item.test(location.pathname)) return;
+    const target = await AK.store.getAd(p.adId);
+    const id = (u) => (u || "").match(/\/items\/(\d+)/)?.[1];
+    if (!target || id(target.url) !== id(location.href)) return;
+    await AK.store.takePending(`refresh-${platform}`);
+    try {
+      // Galerie und eingebettete Daten kurz fertig laden lassen
+      await AK.dom.waitFor("h1", { timeout: 8000 });
+      await AK.dom.sleep(800);
+      await capture({ id: target.id });
+      await AK.store.setRefreshResult(target.id, "ok");
+    } catch (e) {
+      await AK.store.setRefreshResult(target.id, e.message);
+    }
+    AK.api.runtime.sendMessage({ type: "closeTab" });
   }
 
   function check() {
@@ -59,6 +84,7 @@
     document.body.appendChild(btn);
   }
 
+  refreshIfRequested();
   check();
   let last = location.pathname;
   setInterval(() => { if (location.pathname !== last) { last = location.pathname; btn?.remove(); btn = null; check(); } }, 1000);

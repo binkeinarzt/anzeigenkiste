@@ -59,12 +59,37 @@
   const needsRefresh = (ad) => ad.source === "vinted" && ad.url &&
     (!ad.details || !ad.catalogIds?.length || (ad.images || []).some((i) => /^data:image\/webp/.test(i)));
 
+  // Weg 2: Artikel in einem Hintergrund-Tab öffnen; das Content-Script liest ihn dort aus.
+  // Nötig, weil Vinted direkte Abrufe aus der Erweiterung teils mit einer Prüfseite beantwortet.
+  async function refreshViaTab(ad) {
+    await api.storage.local.set({ refreshResult: null });
+    await AK.store.setPending("refresh-vinted", ad.id);
+    const tab = await api.tabs.create({ url: ad.url, active: false });
+    await api.runtime.sendMessage({ type: "registerRefreshTab", tabId: tab.id });
+    try {
+      for (let i = 0; i < 60; i++) { // max. 30 Sekunden
+        await new Promise((r) => setTimeout(r, 500));
+        const { refreshResult } = await api.storage.local.get("refreshResult");
+        if (refreshResult?.adId === ad.id) {
+          if (refreshResult.result !== "ok") throw new Error(refreshResult.result);
+          return AK.store.getAd(ad.id);
+        }
+      }
+      throw new Error("Vinted hat nicht rechtzeitig geantwortet");
+    } finally {
+      await AK.store.takePending("refresh-vinted");
+      api.tabs.remove(tab.id).catch(() => {});
+    }
+  }
+
   async function refreshFromVinted(ad) {
-    const res = await fetch(ad.url, { credentials: "include" });
-    if (!res.ok) throw new Error(`Vinted antwortet mit ${res.status}`);
-    const doc = new DOMParser().parseFromString(await res.text(), "text/html");
-    const d = AK.parseProduct.parseProductPage(doc, ad.url, "vinted");
-    if (!d.title) throw new Error("Artikel auf Vinted nicht mehr gefunden");
+    // Weg 1: Seite direkt abrufen (schnell, ohne sichtbaren Tab)
+    let d = null;
+    try {
+      const res = await fetch(ad.url, { credentials: "include" });
+      if (res.ok) d = AK.parseProduct.parseProductPage(new DOMParser().parseFromString(await res.text(), "text/html"), ad.url, "vinted");
+    } catch {}
+    if (!d?.title || !d.category?.length) return refreshViaTab(ad);
     const update = { id: ad.id, details: d.details, catalogIds: d.catalogIds };
     if (d.category?.length) update.category = d.category;
     const webp = (ad.images || []).some((i) => /^data:image\/webp/.test(i));
