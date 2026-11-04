@@ -47,7 +47,11 @@
     const want = value.replace(/\s+/g, " ").trim();
     if (text() !== want) document.execCommand("insertText", false, value);
     if (text() !== want) {
-      el.innerHTML = value.split("\n").map((l) => `<p>${l.replace(/&/g, "&amp;").replace(/</g, "&lt;") || "<br>"}</p>`).join("");
+      el.replaceChildren(...value.split("\n").map((line) => {
+        const p = document.createElement("p");
+        if (line) p.textContent = line; else p.append(document.createElement("br"));
+        return p;
+      }));
       el.dispatchEvent(new Event("input", { bubbles: true }));
     }
     return text() === want;
