@@ -17,7 +17,7 @@ Freie Browsererweiterung für alle, die auf Kleinanzeigen verkaufen. Anzeigen si
 | Gegenrichtung | Artikelseiten auf Vinted, eBay, willhaben | Knopf „In Anzeigenkiste speichern“ liest den Artikel aus (JSON-LD, sonst Open Graph) |
 | Direkt kaufen | Dashboard → Einstellungen → Kleinanzeigen | „Direkt kaufen“ automatisch auf Ja (inkl. „Versand möglich“) oder Nein setzen, oder selbst wählen |
 | Textvorlagen | Postfach (`/m-nachrichten…`) | Vorlagen-Chips über dem Nachrichtenfeld, Klick fügt Text ein |
-| Übersicht | Dashboard | Liste mit Aufrufen, Preis, Ort, Schlagwörtern; Suche, Sortierung, Bearbeiten, eigene Anzeigen anlegen |
+| Übersicht | Dashboard | Liste mit Preis, Ort, Schlagwörtern; Suche, Sortierung, Bearbeiten, eigene Anzeigen anlegen |
 | Sicherung | Dashboard → Einstellungen | Export/Import der ganzen Kiste als JSON |
 
 **Bewusst nicht enthalten:** automatisches Verlängern, automatisches Veröffentlichen, Autoresponder. Kleinanzeigen untersagt automatisierte Zugriffe in seinen Nutzungsbedingungen. Anzeigenkiste füllt nur aus, abschicken tut immer der Mensch.
@@ -83,6 +83,10 @@ Der E2E-Test fängt die Kleinanzeigen- und Vinted-Seiten ab und liefert nachgeba
 3. addons.mozilla.org: `dist/anzeigenkiste-firefox-*.zip` hochladen (kostenlos).
 4. Landingpage: Der Workflow `.github/workflows/pages.yml` veröffentlicht sie. Einmalig unter Settings → Pages als Quelle „GitHub Actions“ wählen, dann liegt sie unter https://binkeinarzt.github.io/anzeigenkiste/
 5. Releases: Ein Tag wie `v0.3.0` pushen, der Workflow `release.yml` hängt die Zips für Chrome und Firefox an.
+
+## Sicherheit
+
+Alles bleibt lokal im Browser, nichts wird automatisch veröffentlicht, die Oberfläche ist für Webseiten unsichtbar. Details und Meldeweg für Sicherheitslücken: [SECURITY.md](SECURITY.md).
 
 ## Rechtliches
 

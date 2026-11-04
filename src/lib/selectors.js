@@ -9,7 +9,6 @@
       price: ["#viewad-price", "[itemprop='price']", ".boxedarticle--price"],
       description: ["#viewad-description-text", "[itemprop='description']"],
       locality: ["#viewad-locality", "[itemprop='addressLocality']"],
-      views: ["#viewad-cntr-num", ".viewad-cntr-num"],
       extraInfo: ["#viewad-extra-info", "#viewad-ad-id-box"],
       breadcrumbs: [".breadcrump-link", ".breadcrumb-link", "nav[aria-label*='Breadcrumb'] a"],
       detailRows: [".addetailslist--detail"],

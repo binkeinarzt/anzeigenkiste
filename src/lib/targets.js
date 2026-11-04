@@ -126,7 +126,7 @@
           return true;
         }
       },
-      { id: "description", label: "Beschreibung", refill: true, find: () => q(".ql-editor, [contenteditable='true']"),
+      ad.description && { id: "description", label: "Beschreibung", refill: true, find: () => q(".ql-editor, [contenteditable='true']"),
         isFilled: (el) => el.innerText.trim() !== "", apply: (el) => setValue(el, ad.description) },
       // willhaben leert den Preis, wenn sich die Kategorie ändert → nachfüllen, solange leer
       ad.price && ad.priceType !== "GIVE_AWAY" && { id: "price", label: "Preis", refill: true, isFilled: (el) => el.value.trim() !== "",
@@ -206,7 +206,7 @@
     const sz = size(d.size);
     return [
       { id: "title", label: "Titel", find: () => field("title"), apply: (el) => setValue(el, ad.title) },
-      { id: "description", label: "Beschreibung", refill: true, find: () => field("description"),
+      ad.description && { id: "description", label: "Beschreibung", refill: true, find: () => field("description"),
         isFilled: (el) => (el.value ?? el.innerText).trim() !== "", apply: (el) => setValue(el, ad.description) },
       ad.price && ad.priceType !== "GIVE_AWAY" && { id: "price", label: "Preis", refill: true, isFilled: (el) => el.value.trim() !== "",
         find: () => field("price"), apply: (el) => setValue(el, ad.price) },

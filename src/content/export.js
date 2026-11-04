@@ -62,11 +62,11 @@
   }
 
   function renderWaiting(ad) {
-    const { body } = AK.dom.panel(`Nach ${P.label} übertragen`);
+    const { body, close } = AK.dom.panel(`Nach ${P.label} übertragen`);
     body.append(
       h("p", { class: "ak-strong" }, ad.title),
       h("p", { class: "ak-muted" }, "Melde dich bei Bedarf an und öffne das Formular zum Inserieren. Sobald es da ist, fülle ich es aus."),
-      h("button", { class: "ak-btn", type: "button", onclick: async () => { await AK.store.takePending(platform); AK.dom.$("#ak-panel")?.remove(); } }, "Abbrechen")
+      h("button", { class: "ak-btn", type: "button", onclick: async () => { await AK.store.takePending(platform); close(); } }, "Abbrechen")
     );
   }
 

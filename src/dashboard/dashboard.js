@@ -20,12 +20,10 @@
   const num = (n) => (n ?? 0).toLocaleString("de-AT");
 
   function renderStats() {
-    const views = ads.reduce((s, a) => s + (a.stats?.views || 0), 0);
     const value = ads.reduce((s, a) => s + (parseFloat(a.price) || 0), 0);
     const images = ads.reduce((s, a) => s + (a.images?.length || 0), 0);
     $("#stats").replaceChildren(
       h("div", { class: "stat" }, h("b", {}, num(ads.length)), h("span", {}, "Anzeigen in der Kiste")),
-      h("div", { class: "stat" }, h("b", {}, num(views)), h("span", {}, "Aufrufe gesamt")),
       h("div", { class: "stat" }, h("b", {}, `${num(Math.round(value))} €`), h("span", {}, "Warenwert")),
       h("div", { class: "stat" }, h("b", {}, num(images)), h("span", {}, "Bilder gesichert"))
     );
@@ -121,7 +119,6 @@
       !q || [a.title, a.description, a.location, ...(a.category || []), ...(a.tags || [])].join(" ").toLowerCase().includes(q));
     const sorters = {
       updated: (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0),
-      views: (a, b) => (b.stats?.views || 0) - (a.stats?.views || 0),
       price: (a, b) => (parseFloat(b.price) || 0) - (parseFloat(a.price) || 0),
       title: (a, b) => a.title.localeCompare(b.title, "de")
     };
@@ -130,15 +127,16 @@
     $("#empty").hidden = ads.length > 0;
     $("#list").replaceChildren(...list.map((ad) =>
       h("article", { class: "item" },
-        ad.images?.[0] ? h("img", { src: ad.images[0], alt: "" }) : h("div", { class: "noimg" }, "▣"),
+        /^data:image\//.test(ad.images?.[0] || "") ? h("img", { src: ad.images[0], alt: "" }) : h("div", { class: "noimg" }, "▣"),
         h("div", {},
           h("h3", {}, ad.title),
           h("div", { class: "meta" },
             h("span", { class: "price" }, formatPrice(ad)),
             ad.category?.length ? h("span", {}, ad.category[ad.category.length - 1]) : null,
+            ad.details?.brand ? h("span", {}, ad.details.brand) : null,
+            ad.details?.size ? h("span", {}, `Gr. ${ad.details.size}`) : null,
             ad.location ? h("span", {}, ad.location) : null,
             ad.source && AK.platforms[ad.source] ? h("span", {}, `von ${AK.platforms[ad.source].label}`) : null,
-            ad.stats?.views != null ? h("span", { title: `Stand ${fmtDate(ad.stats.updatedAt)}` }, `${num(ad.stats.views)} Aufrufe`) : null,
             h("span", {}, `${ad.images?.length || 0} Bilder`),
             h("span", {}, `gesichert ${fmtDate(ad.savedAt)}`),
             ...(ad.tags || []).map((t) => h("span", { class: "tag" }, t))
@@ -147,7 +145,7 @@
         h("div", { class: "actions" },
           h("button", { class: "btn btn--sm btn--primary", type: "button", onclick: () => openPublish(ad) }, "Inserieren …"),
           h("button", { class: "btn btn--sm", type: "button", onclick: () => openEditor(ad) }, "Bearbeiten"),
-          ad.url ? h("a", { class: "btn btn--sm", href: ad.url, target: "_blank", rel: "noopener" }, "Original") : null,
+          AK.store.safeUrl(ad.url) ? h("a", { class: "btn btn--sm", href: AK.store.safeUrl(ad.url), target: "_blank", rel: "noopener noreferrer" }, "Original") : null,
           h("button", {
             class: "btn btn--sm btn--danger", type: "button",
             onclick: async () => { if (confirm(`„${ad.title}“ aus der Kiste löschen?`)) { await AK.store.deleteAd(ad.id); load(); } }

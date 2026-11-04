@@ -16,8 +16,8 @@ await p.evaluate(async () => {
     ["Winterjacke The North Face M", "70", "FIXED", ["Mode", "Herrenbekleidung"], 158, "3021 Pressbaum"],
     ["Umzugskartons, 20 Stück", "", "GIVE_AWAY", ["Sonstiges"], 96, "1150 Wien"]
   ];
-  for (const [title, price, priceType, category, views, location] of items)
-    await AK.store.saveAd({ title, price, priceType, category, location, stats: { views, updatedAt: Date.now() }, description: "", images: [] });
+  for (const [title, price, priceType, category, , location] of items)
+    await AK.store.saveAd({ title, price, priceType, category, location, description: "", images: [] });
 });
 await new Promise((r) => setTimeout(r, 600));
 await p.screenshot({ path: fileURLToPath(new URL("../site/dashboard.png", import.meta.url)) });

@@ -182,9 +182,40 @@
     return el;
   }
 
+  // Eigene Oberfläche (Panel, Hinweise, Vorlagen) in einem GESCHLOSSENEN Shadow DOM.
+  // Skripte der Webseite – auch Werbe- und Tracking-Skripte – können dort weder Inhalte lesen
+  // (z. B. die Liste deiner Anzeigen) noch Knöpfe anklicken; das CSS der Seite wirkt nicht hinein.
+  let uiShadow = null;
+  function uiRoot() {
+    if (uiShadow && uiShadow.host.isConnected) return uiShadow;
+    const host = document.createElement("ak-ui");
+    host.style.cssText = "all: initial; position: fixed; top: 0; left: 0; width: 0; height: 0; z-index: 2147483000;";
+    uiShadow = host.attachShadow({ mode: "closed" });
+    const style = document.createElement("style");
+    style.textContent = AK.UI_CSS || "";
+    uiShadow.append(style);
+    (document.body || document.documentElement).appendChild(host);
+    return uiShadow;
+  }
+
+  // Für eingebettete Elemente an einer bestimmten Stelle der Seite (z. B. Textvorlagen über dem Eingabefeld).
+  // inlineRoots ist nur im abgeschotteten Bereich der Erweiterung sichtbar, nicht für die Webseite.
+  const inlineRoots = [];
+  function inlineRoot(beforeEl) {
+    const host = document.createElement("ak-inline-ui");
+    host.style.cssText = "all: initial; display: block;";
+    const shadow = host.attachShadow({ mode: "closed" });
+    const style = document.createElement("style");
+    style.textContent = AK.UI_CSS || "";
+    shadow.append(style);
+    beforeEl.parentElement?.insertBefore(host, beforeEl);
+    inlineRoots.push(shadow);
+    return { host, shadow };
+  }
+
   function toast(msg, kind = "ok") {
-    const t = h("div", { class: `ak-toast ak-toast--${kind}` }, msg);
-    document.body.appendChild(t);
+    const t = h("div", { class: `ak-toast ak-toast--${kind}`, role: "status" }, msg);
+    uiRoot().appendChild(t);
     requestAnimationFrame(() => t.classList.add("ak-toast--in"));
     setTimeout(() => { t.classList.remove("ak-toast--in"); setTimeout(() => t.remove(), 300); }, 3200);
   }
@@ -192,7 +223,8 @@
   // Schwebendes Panel unten rechts. Gibt { root, body, close } zurück.
   // onClose: wird beim Schließen über ✕ aufgerufen (z. B. um das Ausfüllen zu stoppen)
   function panel(title, { id = "ak-panel", onClose } = {}) {
-    document.getElementById(id)?.remove();
+    const ui = uiRoot();
+    ui.getElementById(id)?.remove();
     const body = h("div", { class: "ak-panel__body" });
     const close = () => { onClose?.(); root.remove(); };
     const root = h("aside", { id, class: "ak-panel", role: "dialog", "aria-label": title },
@@ -203,7 +235,7 @@
       ),
       body
     );
-    document.body.appendChild(root);
+    ui.appendChild(root);
     return { root, body, close };
   }
 
@@ -213,5 +245,5 @@
     return `${ad.price} €${ad.priceType === "NEGOTIABLE" ? " VB" : ""}`;
   }
 
-  AK.dom = { $, $$, waitFor, sleep, setValue, setEditorText, insertText, dataUrlToFile, ensureJpeg, injectFiles, injectFilesOnce, downloadDataUrl, copy, h, toast, panel, formatPrice };
+  AK.dom = { $, $$, waitFor, sleep, setValue, setEditorText, insertText, dataUrlToFile, ensureJpeg, injectFiles, injectFilesOnce, downloadDataUrl, copy, h, toast, panel, uiRoot, inlineRoot, inlineRoots, formatPrice };
 })();

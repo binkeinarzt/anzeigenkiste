@@ -1,6 +1,6 @@
 {
   "name": "anzeigenkiste",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Open-Source-Browsererweiterung: Kleinanzeigen-Anzeigen sichern, neu inserieren und zu anderen Plattformen übertragen.",
   "license": "MIT",
@@ -8,7 +8,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "icons": "python3 scripts/make-icons.py",
-    "test": "node test/parse.test.mjs && node test/parse-product.test.mjs && node test/mapping.test.mjs",
+    "test": "node test/parse.test.mjs && node test/parse-product.test.mjs && node test/mapping.test.mjs && node test/security.test.mjs",
     "lint:ff": "npx --yes web-ext lint --source-dir dist/firefox",
     "test:e2e": "node scripts/build.mjs && node test/e2e.test.mjs"
   },

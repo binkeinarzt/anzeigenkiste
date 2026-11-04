@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Anzeigenkiste</title>
   <link rel="stylesheet" href="dashboard.css">
-  <link rel="stylesheet" href="../content/panel.css">
 </head>
 <body>
   <header class="top">
@@ -25,7 +24,6 @@
         <input id="search" class="input" type="search" placeholder="Suchen nach Titel, Kategorie, Ort …" aria-label="Anzeigen durchsuchen">
         <select id="sort" class="input input--auto" aria-label="Sortierung">
           <option value="updated">Zuletzt geändert</option>
-          <option value="views">Meiste Aufrufe</option>
           <option value="price">Preis absteigend</option>
           <option value="title">Titel A–Z</option>
         </select>
@@ -127,6 +125,7 @@
     </form>
   </dialog>
 
+  <script src="../lib/ui-css.js"></script>
   <script src="../lib/api.js"></script>
   <script src="../lib/storage.js"></script>
   <script src="../lib/dom.js"></script>

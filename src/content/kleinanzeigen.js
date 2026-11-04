@@ -38,15 +38,6 @@
     });
     if (anchor?.parentElement) anchor.parentElement.insertBefore(btn, anchor.nextSibling);
     else { btn.classList.add("ak-floating"); document.body.appendChild(btn); }
-
-    // Aufrufe bereits gespeicherter Anzeigen still aktualisieren
-    const data = AK.parse.parseAdPage(document, location.href.split("?")[0]);
-    if (data.sourceId && data.stats) {
-      AK.store.getAdList().then((list) => {
-        const known = list.find((a) => a.sourceId === data.sourceId);
-        if (known) AK.store.saveAd({ id: known.id, stats: data.stats });
-      });
-    }
   }
 
   // ---------- Meine Anzeigen: alle sichern ----------
@@ -54,7 +45,10 @@
   function collectMyAdLinks() {
     const urls = new Set();
     for (const a of document.querySelectorAll(S.myAds.links.join(","))) {
-      const u = new URL(a.getAttribute("href"), location.origin);
+      let u;
+      try { u = new URL(a.getAttribute("href"), location.origin); } catch { continue; }
+      // Nur Anzeigen auf kleinanzeigen.de selbst abrufen (die Abrufe senden deine Anmeldung mit)
+      if (u.origin !== location.origin) continue;
       if (/\/s-anzeige\/[^/]+\/\d+/.test(u.pathname)) urls.add(u.origin + u.pathname);
     }
     return [...urls];
@@ -140,7 +134,7 @@
           return true;
         }
       },
-      { id: "description", label: "Beschreibung", refill: true, find: () => $(S.post.description),
+      ad.description && { id: "description", label: "Beschreibung", refill: true, find: () => $(S.post.description),
         isFilled: (el) => el.value.trim() !== "", apply: (el) => setValue(el, ad.description) },
       ad.priceType !== "GIVE_AWAY" && ad.price && { id: "price", label: "Preis", refill: true, isFilled: (el) => el.value.trim() !== "",
         find: () => $(S.post.price), apply: (el) => setValue(el, ad.price) },
@@ -213,10 +207,14 @@
 
   // ---------- Postfach: Textvorlagen ----------
 
+  // Vorlagen-Leiste in einem geschlossenen Shadow DOM: die Seite sieht weder Namen noch Texte deiner Vorlagen
+  const withTemplates = new WeakSet();
   function attachTemplates(input) {
-    if (input.dataset.akTemplates) return;
-    input.dataset.akTemplates = "1";
+    if (withTemplates.has(input)) return;
+    withTemplates.add(input);
+    const { shadow } = AK.dom.inlineRoot(input);
     const bar = h("div", { class: "ak-templates" });
+    shadow.append(bar);
     const render = async () => {
       bar.replaceChildren(h("span", { class: "ak-templates__label" }, "▣ Vorlagen:"));
       for (const t of await AK.store.getTemplates()) {
@@ -228,7 +226,6 @@
     };
     render();
     AK.api.storage.onChanged.addListener((c) => { if (c.templates) render(); });
-    input.parentElement?.insertBefore(bar, input);
   }
 
   function initMessages() {

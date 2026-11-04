@@ -69,8 +69,6 @@
     const { price, priceType } = parsePrice(first(doc, S.ad.price)?.textContent);
     const description = textWithBreaks(first(doc, S.ad.description)) || clean(meta(doc, "og:description"));
     const location = clean(first(doc, S.ad.locality)?.textContent);
-    const viewsText = clean(first(doc, S.ad.views)?.textContent);
-    const views = viewsText ? parseInt(viewsText.replace(/\D/g, ""), 10) : null;
 
     let category = [];
     for (const s of S.ad.breadcrumbs) {
@@ -105,8 +103,7 @@
       shipping: clean(first(doc, S.ad.shipping)?.textContent),
       attributes,
       imageUrls: imageUrls(doc, S),
-      createdAt: dateMatch?.[1] || "",
-      stats: views != null && !Number.isNaN(views) ? { views, updatedAt: Date.now() } : undefined
+      createdAt: dateMatch?.[1] || ""
     };
   }
 

@@ -21,7 +21,7 @@ assert.equal(ad.location, "10115 Berlin - Mitte");
 assert.equal(ad.description, "Sehr guter Zustand.\nNichtraucher, keine Tiere.\n\nAbholung in Berlin.");
 assert.deepEqual(ad.category, ["Möbel & Wohnen", "Wohnzimmer"]);
 assert.deepEqual(ad.attributes, [{ label: "Art", value: "Sofas & Sitzgarnituren" }, { label: "Farbe", value: "Grau" }]);
-assert.equal(ad.stats.views, 312);
+assert.equal(ad.stats, undefined);
 assert.equal(ad.createdAt, "21.10.2026");
 assert.equal(ad.imageUrls.length, 2);
 assert.ok(ad.imageUrls[0].includes("rule=$_59.JPG"));

@@ -73,6 +73,31 @@ async function fakePage(url) {
 
 const click = (page, sel) => page.$eval(sel, (b) => b.click());
 
+// Führt Code im abgeschotteten Bereich der Erweiterung (Content-Script-Welt) einer Seite aus.
+// Panel, Hinweise und Vorlagen liegen in einem geschlossenen Shadow DOM, an das die Webseite –
+// und damit auch page.evaluate – absichtlich nicht herankommt.
+async function inExt(page, expression) {
+  const cdp = await page.createCDPSession();
+  const contexts = [];
+  cdp.on("Runtime.executionContextCreated", (e) => contexts.push(e.context));
+  await cdp.send("Runtime.enable");
+  const { frameTree } = await cdp.send("Page.getFrameTree");
+  const ctx = contexts.find((c) => c.auxData?.type === "isolated" && c.auxData?.frameId === frameTree.frame.id && c.name === "Anzeigenkiste");
+  if (!ctx) { await cdp.detach(); throw new Error("Content-Script-Welt nicht gefunden"); }
+  const r = await cdp.send("Runtime.evaluate", { expression, contextId: ctx.id, awaitPromise: true, returnByValue: true });
+  await cdp.detach();
+  if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text);
+  return r.result.value;
+}
+async function waitExt(page, expression, ms = 10000) {
+  for (let t = 0; t < ms; t += 250) {
+    if (await inExt(page, expression).catch(() => false)) return true;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`Zeitüberschreitung: ${expression}`);
+}
+const panelText = "AK.dom.uiRoot().getElementById('ak-panel')?.innerText || ''";
+
 try {
   const sw = await browser.waitForTarget((t) => t.type() === "service_worker", { timeout: 10000 });
   const extId = new URL(sw.url()).host;
@@ -89,7 +114,7 @@ try {
   await dash.goto(`chrome-extension://${extId}/dashboard/dashboard.html`);
   await dash.waitForSelector(".item h3");
   assert.equal(await dash.$eval(".item h3", (e) => e.textContent), "IKEA Sofa Kivik grau");
-  assert.match(await dash.$eval(".item .meta", (e) => e.textContent), /1250 € VB.*312 Aufrufe/);
+  assert.match(await dash.$eval(".item .meta", (e) => e.textContent), /1250 € VB/);
   console.log("✓ Dashboard listet die Anzeige");
 
   await dash.bringToFront();
@@ -153,7 +178,9 @@ try {
 
   // 7) Quoka: Startseite ohne Formular → Warte-Panel; Formular erscheint später → wird ausgefüllt
   const qu = await fakePage("https://www.quoka.de/");
-  await qu.waitForFunction(() => document.querySelector("#ak-panel")?.textContent.includes("öffne das Formular"), { timeout: 10000 });
+  await waitExt(qu, `(${panelText}).includes("öffne das Formular")`);
+  // Die Webseite selbst sieht vom Panel nichts (geschlossenes Shadow DOM)
+  assert.equal(await qu.evaluate(() => document.body.innerText.includes("öffne das Formular") || !!document.querySelector("ak-ui")?.shadowRoot), false, "Panel für die Webseite unsichtbar");
   await qu.evaluate(() => document.body.insertAdjacentHTML("beforeend",
     `<form><label for="t">Titel der Anzeige</label><input id="t" name="headline"><textarea name="text"></textarea><input name="preis"></form>`));
   await qu.waitForFunction(() => document.querySelector("input[name=headline]").value === "IKEA Sofa Kivik grau", { timeout: 10000 });
@@ -162,8 +189,9 @@ try {
 
   // 8) Textvorlagen im Postfach
   const msg = await fakePage("https://www.kleinanzeigen.de/m-nachrichten.html");
-  await msg.waitForSelector(".ak-chip");
-  await click(msg, ".ak-chip");
+  await waitExt(msg, "!!AK.dom.inlineRoots[0]?.querySelector('.ak-chip')");
+  assert.equal(await msg.evaluate(() => document.body.innerText.includes("Vorlagen")), false, "Vorlagen für die Webseite unsichtbar");
+  await inExt(msg, "AK.dom.inlineRoots[0].querySelector('.ak-chip').click()");
   assert.match(await msg.$eval("textarea", (e) => e.value), /noch verfügbar/);
   console.log("✓ Textvorlage eingefügt");
 
@@ -272,12 +300,14 @@ try {
 
   // Erneut ausfüllen (z. B. nach Unterbrechen) darf die Fotos nicht doppelt hochladen
   await post2.bringToFront();
-  await post2.evaluate(() => [...document.querySelectorAll("#ak-panel button")].find((b) => b.textContent === "Formular ausfüllen").click());
+  // Die Kleinanzeigen-Seite kann die Liste deiner Anzeigen im Panel nicht auslesen
+  assert.equal(await post2.evaluate(() => document.body.innerText.includes("IKEA Sofa")), false, "Anzeigenliste für die Webseite unsichtbar");
+  await inExt(post2, "[...AK.dom.uiRoot().querySelectorAll('#ak-panel button')].find((b) => b.textContent === 'Formular ausfüllen').click()");
   await new Promise((r) => setTimeout(r, 2500));
   assert.equal((await photos()).length, 2, "Fotos nach erneutem Ausfüllen nicht doppelt");
 
   // ✕ am Panel stoppt das Ausfüllen: geleerte Beschreibung bleibt leer
-  await post2.evaluate(() => document.querySelector("#ak-panel .ak-icon-btn").click());
+  await inExt(post2, "AK.dom.uiRoot().querySelector('#ak-panel .ak-icon-btn').click()");
   await post2.evaluate(() => { const t = document.querySelector("#ad-description"); t.value = ""; t.dispatchEvent(new Event("input", { bubbles: true })); document.body.append(document.createElement("div")); });
   await new Promise((r) => setTimeout(r, 1500));
   assert.equal(await post2.$eval("#ad-description", (e) => e.value), "", "nach ✕ wird nichts mehr ausgefüllt");

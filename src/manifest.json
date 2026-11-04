@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Anzeigenkiste",
   "short_name": "Anzeigenkiste",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Open Source: Anzeigen sichern, neu inserieren und zwischen Kleinanzeigen, Vinted, eBay, willhaben, Facebook, markt.de und Quoka übertragen. Alles lokal, kostenlos.",
   "icons": {
     "16": "icons/icon16.png",
@@ -46,6 +46,7 @@
         "https://www.kleinanzeigen.de/*"
       ],
       "js": [
+        "lib/ui-css.js",
         "lib/api.js",
         "lib/storage.js",
         "lib/dom.js",
@@ -72,6 +73,7 @@
         "https://www.quoka.de/*"
       ],
       "js": [
+        "lib/ui-css.js",
         "lib/api.js",
         "lib/storage.js",
         "lib/dom.js",
@@ -92,5 +94,8 @@
   "options_ui": {
     "page": "dashboard/dashboard.html",
     "open_in_tab": true
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
   }
 }
