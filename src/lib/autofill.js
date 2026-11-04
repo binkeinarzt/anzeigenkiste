@@ -150,7 +150,8 @@
 
   /**
    * Startet das Ausfüllen.
-   * steps: [{ id, label, find: () => Element|null, apply: async (el) => boolean, optional? }]
+   * steps: [{ id, label, find: () => Element|null, apply: async (el) => boolean, optional?, hidden?, refill?, isFilled? }]
+ *   hidden: Feld darf unsichtbar sein (z. B. <input type="file">)
    * Rückgabe: { stop(), status(), tick() }
    */
   function run(steps, { durationMs = 15 * 60 * 1000, onChange } = {}) {
@@ -178,7 +179,8 @@
         if (stopped) break;
         if (done.has(s.id) && !s.refill) continue;
         const el = s.find();
-        if (!el || !visible(el)) continue;
+        // Foto-Felder sind fast immer versteckt (display: none) hinter einer Ablagefläche → nicht auf Sichtbarkeit prüfen
+        if (!el || (!s.hidden && !visible(el))) continue;
         if (done.has(s.id) && s.isFilled) {
           // Erledigt, aber die Seite hat das Feld geleert (z. B. nach Kategoriewechsel): höchstens 3× nachfüllen
           if (s.isFilled(el)) continue;

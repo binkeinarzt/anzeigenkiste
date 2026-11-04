@@ -131,7 +131,7 @@
       // willhaben leert den Preis, wenn sich die Kategorie ändert → nachfüllen, solange leer
       ad.price && ad.priceType !== "GIVE_AWAY" && { id: "price", label: "Preis", refill: true, isFilled: (el) => el.value.trim() !== "",
         find: () => q("#price, input[name='price']"), apply: (el) => setValue(el, ad.price) },
-      ad.images?.length && { id: "images", label: `${ad.images.length} Bilder`, find: () => q("#imagePicker, input[type='file']"), apply: (el) => injectFiles(el, ad.images, "artikel") },
+      ad.images?.length && { id: "images", label: `${ad.images.length} Bilder`, hidden: true, find: () => q("#imagePicker, input[type='file']"), apply: (el) => injectFiles(el, ad.images, "artikel") },
       d.brand && {
         id: "brand", label: "Marke", refill: true,
         find: () => { const k = whKey(/^BRAND/); return k ? (q(`input[name='${k}-radio-group']`) || q(`[data-testid='${k}-button']`)) : null; },
@@ -211,7 +211,7 @@
       ad.price && ad.priceType !== "GIVE_AWAY" && { id: "price", label: "Preis", refill: true, isFilled: (el) => el.value.trim() !== "",
         find: () => field("price"), apply: (el) => setValue(el, ad.price) },
       ad.images?.length && {
-        id: "images", label: `${ad.images.length} Bilder`,
+        id: "images", label: `${ad.images.length} Bilder`, hidden: true,
         find: () => Array.from(document.querySelectorAll("input[type='file']")).find((i) => /image/.test(i.accept || "image")) || null,
         apply: (el) => injectFiles(el, ad.images, "artikel")
       },

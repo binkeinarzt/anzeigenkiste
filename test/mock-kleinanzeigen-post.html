@@ -5,7 +5,7 @@
      Kategorievorschläge nach dem Titel, Merkmale erst nach Kategoriewahl, Klapplisten mit role=combobox/listbox,
      Marke als Suchfeld mit Vorschlägen, Zustand in einem <dialog> mit „Bestätigen“. -->
 <form id="f" onsubmit="return false">
-  <input type="file" multiple accept="image/*">
+  <div class="dropzone">Zieh deine Fotos hier rein</div><input type="file" multiple accept="image/jpeg,image/gif,image/png" style="display:none">
   <input id="ad-title" name="title">
   <div id="ad-category-suggestions"><a href="#">Wähle deine Kategorie</a></div>
   <input type="hidden" name="categoryId" value="">

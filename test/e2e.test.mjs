@@ -241,7 +241,14 @@ try {
   console.log("✓ Alte Vinted-Einträge ohne Details werden über einen Hintergrund-Tab nachgeladen, Tab schließt sich wieder");
 
   // 11) Vinted-Artikel auf Kleinanzeigen: Kategorie und alle Merkmale nach Vinted
-  await dash.evaluate(async (id) => { await AK.store.setPending("kleinanzeigen", id); await AK.store.setPending("willhaben", id); }, vad.id);
+  // Zwei WebP-Bilder hinterlegen, wie sie ältere Versionen von Vinted gespeichert haben
+  await dash.evaluate(async (id) => {
+    const webp = (color) => { const c = document.createElement("canvas"); c.width = 60; c.height = 40; const x = c.getContext("2d"); x.fillStyle = color; x.fillRect(0, 0, 60, 40); return c.toDataURL("image/webp"); };
+    const ads = await AK.store.getAds();
+    ads[id].images = [webp("#c33"), webp("#36c")];
+    await chrome.storage.local.set({ ads });
+    await AK.store.setPending("kleinanzeigen", id); await AK.store.setPending("willhaben", id);
+  }, vad.id);
   const post2 = await fakePage("https://www.kleinanzeigen.de/p-anzeige-aufgeben-schritt2.html");
   const v = (n) => post2.$eval(`input[name='${n}']`, (e) => e.value).catch(() => null);
   for (let i = 0; i < 60 && !(await v("attributeMap[kleidung_damen.color]")); i++) await new Promise((r) => setTimeout(r, 300));
@@ -251,7 +258,9 @@ try {
     cond: await v("attributeMap[kleidung_damen.condition]"), submitted: await post2.evaluate(() => !!window.__submitted)
   };
   assert.deepEqual(ka2, { cat: "154", art: "pullover", size: "m_38", color: "rose", brand: "nike", cond: "new", submitted: false });
-  console.log("✓ Kleinanzeigen: Damenbekleidung › Pullover, M, Nike, Rosé, Neu – nichts abgeschickt");
+  const kaFiles = await post2.$eval("input[type=file]", (e) => [...e.files].map((f) => `${f.name}:${f.type}`));
+  assert.deepEqual(kaFiles, ["anzeige-1.jpg:image/jpeg", "anzeige-2.jpg:image/jpeg"], "Kleinanzeigen: Fotos als JPEG im versteckten Foto-Feld");
+  console.log("✓ Kleinanzeigen: Damenbekleidung › Pullover, M, Nike, Rosé, Neu, 2 Fotos (WebP → JPEG) – nichts abgeschickt");
 
   // 12) willhaben: Beschreibung im Editor, Felder nach Kategoriewahl, Preis nachgefüllt, Fenster richtig gespeichert
   const wh = await fakePage("https://www.willhaben.at/iad/anzeigenaufgabe/marktplatz?adTypeId=67&productId=67");
@@ -278,6 +287,7 @@ try {
   assert.equal(whs.cond, "neu");
   assert.equal(whs.color, "Rosa");
   assert.equal(whs.draftSaved, false, "willhaben: Entwurf darf nicht gespeichert werden");
+  assert.deepEqual(await wh.$eval("#imagePicker", (e) => [...e.files].map((f) => f.type)), ["image/jpeg", "image/jpeg"], "willhaben: Fotos als JPEG");
   assert.equal(whs.submitted, false);
   console.log("✓ willhaben: Text im Editor, Damen-Kategorie, Nike, 38, Neu, Rosa, Preis – kein Entwurf, nichts abgeschickt");
 

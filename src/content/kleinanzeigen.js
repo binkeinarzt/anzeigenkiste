@@ -144,7 +144,7 @@
       ad.priceType !== "GIVE_AWAY" && ad.price && { id: "price", label: "Preis", refill: true, isFilled: (el) => el.value.trim() !== "",
         find: () => $(S.post.price), apply: (el) => setValue(el, ad.price) },
       priceText && { id: "priceType", label: "Preisart", find: () => $(S.post.priceType), apply: async (el) => !!(await choose(el, [ad.priceType, priceText])) },
-      ad.images?.length && { id: "images", label: `${ad.images.length} Bilder`, find: () => $(S.post.images), apply: (el) => injectFiles(el, ad.images, "anzeige") },
+      ad.images?.length && { id: "images", label: `${ad.images.length} Bilder`, hidden: true, find: () => $(S.post.images), apply: (el) => injectFiles(el, ad.images, "anzeige") },
       ...map.attrs.map((a) => ({
         id: `attr-${a.name}`, label: a.label, refill: true, optional: a.name === "material",
         find: () => attributeControl(a.name),
