@@ -13,6 +13,7 @@ Freie Browsererweiterung für alle, die auf Kleinanzeigen verkaufen. Anzeigen si
 | Anzeige sichern | jede Anzeige (`/s-anzeige/…`) | Knopf „In Anzeigenkiste speichern“ sichert Titel, Text, Preis, Kategorie, Merkmale und Bilder |
 | Alle sichern | „Meine Anzeigen“ | Panel sichert alle sichtbaren Anzeigen nacheinander (bewusst gedrosselt) |
 | Inserieren | Dashboard → „Inserieren …“ | Plattformen ankreuzen (Kleinanzeigen, Vinted, eBay, willhaben, Facebook, markt.de, Quoka). Je Plattform öffnet sich ein Tab, das Formular wird mit Titel, Text, Preis und Bildern ausgefüllt. Kopier-Knöpfe als Rückfall |
+| Vinted als Vorlage | Artikel von Vinted holen, dann „Inserieren …“ | Kategorie, Marke, Größe, Zustand und Farbe werden von Vinted übernommen und auf Kleinanzeigen und willhaben automatisch gesetzt – auch Felder, die erst nach der Kategoriewahl erscheinen |
 | Gegenrichtung | Artikelseiten auf Vinted, eBay, willhaben | Knopf „In Anzeigenkiste speichern“ liest den Artikel aus (JSON-LD, sonst Open Graph) |
 | Textvorlagen | Postfach (`/m-nachrichten…`) | Vorlagen-Chips über dem Nachrichtenfeld, Klick fügt Text ein |
 | Übersicht | Dashboard | Liste mit Aufrufen, Preis, Ort, Schlagwörtern; Suche, Sortierung, Bearbeiten, eigene Anzeigen anlegen |
@@ -43,6 +44,9 @@ src/
     selectors.js         ALLE Kleinanzeigen-Selektoren an einer Stelle
     parse.js             liest eine Kleinanzeigen-Detailseite aus
     platforms.js         Zielplattformen: Startseite, Formularfelder, Artikelseiten
+    mapping.js           Vinted-Kategorie/-Merkmale → Kleinanzeigen-Kategorien und -Merkmale
+    autofill.js          Ausfüll-Motor: füllt Felder, sobald sie erscheinen (Klapplisten, Dialoge, Editoren)
+    targets.js           Ausfüll-Schritte für willhaben und allgemeine Formulare
     parse-product.js     liest Artikelseiten anderer Plattformen aus
   content/
     kleinanzeigen.js     Speichern, Meine Anzeigen, Formular ausfüllen, Textvorlagen

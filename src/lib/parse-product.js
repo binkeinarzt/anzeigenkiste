@@ -46,10 +46,10 @@
 
   // ---------- Vinted ----------
 
-  // Sucht in Skript-Text alle Arrays nach `"photos":[` – roh oder als JSON-String escaped (Next.js-Payload).
-  function photoArrays(text) {
+  // Sucht in Skript-Text alle JSON-Arrays nach `"<name>":[` – roh oder als JSON-String escaped (Next.js-Payload).
+  function jsonArrays(text, name) {
     const out = [];
-    for (const [key, escaped] of [['"photos":[', false], ['\\"photos\\":[', true]]) {
+    for (const [key, escaped] of [[`"${name}":[`, false], [`\\"${name}\\":[`, true]]) {
       let i = 0;
       while ((i = text.indexOf(key, i)) >= 0) {
         const start = i + key.length - 1;
@@ -64,8 +64,10 @@
         i = j;
       }
     }
-    return out.filter((a) => Array.isArray(a) && a.length && a[0] && (a[0].url || a[0].full_size_url));
+    return out.filter((a) => Array.isArray(a) && a.length);
   }
+
+  const photoArrays = (text) => jsonArrays(text, "photos").filter((a) => a[0] && (a[0].url || a[0].full_size_url));
 
   const vintedPhotoId = (u) => (u || "").match(/vinted\.net\/t\/([^/]+)\//)?.[1] || "";
 
@@ -81,6 +83,61 @@
     // Rückfall: was die Galerie sichtbar zeigt
     const seen = new Set();
     return domImgs.filter((u) => { const id = vintedPhotoId(u); if (seen.has(id)) return false; seen.add(id); return true; });
+  }
+
+  // Marke, Größe, Zustand, Farbe, Material und Kategoriepfad.
+  // Kategorie: Brotkrumen-Links (…?referrer=item-crumbs) mit Vinted-Katalog-IDs.
+  // Merkmale: Array "attributes" im Payload ({code, data: {value}}), Rückfall auf die sichtbare Liste.
+  function vintedDetails(doc, scripts) {
+    const crumbs = Array.from(doc.querySelectorAll("a[href*='referrer=item-crumbs']"))
+      .map((a) => ({ title: clean(a.textContent), href: a.getAttribute("href") || "" }))
+      .filter((c) => c.title && !/\/brand\//.test(c.href))
+      .map((c) => ({ title: c.title, id: Number(c.href.match(/\/catalog\/(\d+)/)?.[1]) || null }));
+
+    const details = {};
+    const attrs = jsonArrays(scripts, "attributes").find((a) => a.some((x) => x && x.code && x.data && "value" in x.data));
+    for (const a of attrs || []) {
+      if (["brand", "size", "status", "color", "material"].includes(a.code)) details[a.code] = clean(String(a.data.value));
+    }
+    for (const code of ["size", "status", "color", "material"]) {
+      if (details[code]) continue;
+      const el = doc.querySelector(`[data-testid='item-attributes-${code}']`);
+      const label = el?.querySelector("[class*='title'], dt, span")?.textContent || "";
+      const v = clean((el?.textContent || "").replace(label, ""));
+      if (v) details[code] = v;
+    }
+    if (!details.brand) {
+      const m = scripts.match(/brand_dto\\?"\s*:\s*\{[^}]*?\\?"title\\?"\s*:\s*\\?"([^"\\]+)/);
+      if (m) details.brand = m[1];
+    }
+    return {
+      category: crumbs.map((c) => c.title),
+      catalogIds: crumbs.map((c) => c.id).filter(Boolean),
+      details: {
+        brand: details.brand || "",
+        size: details.size || "",
+        condition: details.status || "",
+        color: details.color || "",
+        material: details.material || ""
+      }
+    };
+  }
+
+  function vintedBasics(doc, scripts) {
+    const title = clean(doc.querySelector("h1")?.textContent) || clean(meta(doc, "og:title").replace(/\s*\|\s*Vinted\s*$/, ""));
+    const descEl = doc.querySelector("[itemprop='description'], [data-testid='item-description']");
+    let description = descEl ? descEl.textContent.trim() : "";
+    if (!description) {
+      const og = meta(doc, "og:description");
+      description = og.startsWith(title + " - ") ? og.slice(title.length + 3) : og;
+    }
+    // Preis des Artikels: das price-Objekt direkt vor seinem eigenen Titel
+    let price = "";
+    const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const m = scripts.match(new RegExp(`price\\\\?"\\s*:\\s*\\{\\\\?"amount\\\\?"\\s*:\\s*\\\\?"([\\d.]+)\\\\?"[^}]*\\}\\s*,\\s*\\\\?"title\\\\?"\\s*:\\s*\\\\?"${esc(JSON.stringify(title).slice(1, -1).replace(/"/g, '\\"'))}`));
+    if (m) price = toPrice(m[1]);
+    if (!price) price = toPrice(clean(doc.querySelector("[data-testid='item-price']")?.textContent));
+    return { title, description, price };
   }
 
   // ---------- willhaben ----------
@@ -131,6 +188,16 @@
     let images = [];
     if (source === "vinted") {
       images = vintedImages(doc);
+      const scripts = Array.from(doc.querySelectorAll("script")).map((s) => s.textContent).join("\n");
+      const b = vintedBasics(doc, scripts);
+      // Vinted ist die Quelle der Wahrheit: eigene Angaben haben Vorrang vor JSON-LD
+      data.title = b.title || data.title;
+      data.description = b.description || data.description;
+      data.price = b.price || data.price;
+      const d = vintedDetails(doc, scripts);
+      if (d.category.length) data.category = d.category;
+      data.catalogIds = d.catalogIds;
+      data.details = d.details;
     } else if (source === "willhaben") {
       const ad = willhabenDetails(doc);
       if (ad) {
@@ -153,5 +220,5 @@
     return data;
   }
 
-  AK.parseProduct = { parseProductPage, toPrice, htmlToText, photoArrays };
+  AK.parseProduct = { parseProductPage, toPrice, htmlToText, photoArrays, jsonArrays };
 })();

@@ -92,24 +92,78 @@
 
   // ---------- Anzeige aufgeben: vorausfüllen ----------
 
-  async function fillPostForm(ad) {
-    const results = [];
-    const title = await waitFor(S.post.title, { timeout: 8000 });
-    results.push(["Titel", setValue(title, ad.title)]);
-    results.push(["Beschreibung", setValue($(S.post.description), ad.description)]);
-
-    if (ad.priceType !== "GIVE_AWAY") results.push(["Preis", setValue($(S.post.price), ad.price)]);
-    const pt = $(S.post.priceType);
-    if (pt && ad.priceType) {
-      const opt = Array.from(pt.options || []).find((o) => o.value === ad.priceType);
-      results.push(["Preisart", opt ? setValue(pt, opt.value) : false]);
+  // Präfix der Merkmale der gerade gewählten Kategorie, z. B. „kleidung_herren“
+  function attributePrefix() {
+    const counts = {};
+    for (const i of document.querySelectorAll(S.post.attributeHidden)) {
+      const m = i.name.match(/^attributeMap\[([^.\]]+)\./);
+      if (m) counts[m[1]] = (counts[m[1]] || 0) + 1;
     }
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+  }
 
-    const file = $(S.post.images);
-    if (file && ad.images?.length) results.push([`${ad.images.length} Bilder`, injectFiles(file, ad.images, "anzeige")]);
+  // Bedienelement eines Merkmals: Element mit id „präfix.name“, sonst Knopf neben dem versteckten Feld
+  function attributeControl(name) {
+    const prefix = attributePrefix();
+    if (!prefix) return null;
+    const key = `${prefix}.${name}`;
+    const byId = document.getElementById(key);
+    if (byId) return byId;
+    const hidden = document.querySelector(`input[name='attributeMap[${CSS.escape(key)}]']`);
+    if (!hidden) return null;
+    if (hidden.type === "radio" || hidden.type === "checkbox") return hidden;
+    return hidden.parentElement?.querySelector("button, [role='combobox'], select") || null;
+  }
 
-    const failed = results.filter(([, ok]) => !ok).map(([n]) => n);
-    toast(failed.length ? `Ausgefüllt. Bitte prüfen: ${failed.join(", ")}` : "Formular ausgefüllt. Kategorie prüfen und absenden.", failed.length ? "warn" : "ok");
+  let currentRun = null;
+
+  async function fillPostForm(ad, statusEl) {
+    currentRun?.stop();
+    await waitFor(S.post.title, { timeout: 10000 });
+    const map = AK.mapping.toKleinanzeigen(ad);
+    const { choose } = AK.autofill;
+    const priceText = { FIXED: "Festpreis", NEGOTIABLE: "VB", GIVE_AWAY: "Zu verschenken" }[ad.priceType];
+
+    const steps = [
+      { id: "title", label: "Titel", find: () => $(S.post.title), apply: (el) => setValue(el, ad.title) },
+      map.categoryId && {
+        id: "category", label: `Kategorie ${map.categoryLabel}`, refill: true,
+        find: () => $(S.post.categoryPicker),
+        apply: (fs) => {
+          const radios = Array.from(fs.querySelectorAll("input[type='radio']"));
+          // Vorschlag mit der passenden Kategorie-ID, sonst einer, dessen Text die Kategorie nennt
+          const r = radios.find((x) => x.value === String(map.categoryId))
+            || radios.find((x) => AK.mapping.has(AK.autofill.labelOf(x), map.categoryLabel));
+          if (!r) return false;
+          if (!r.checked) r.click();
+          return true;
+        }
+      },
+      { id: "description", label: "Beschreibung", refill: true, find: () => $(S.post.description),
+        isFilled: (el) => el.value.trim() !== "", apply: (el) => setValue(el, ad.description) },
+      ad.priceType !== "GIVE_AWAY" && ad.price && { id: "price", label: "Preis", refill: true, isFilled: (el) => el.value.trim() !== "",
+        find: () => $(S.post.price), apply: (el) => setValue(el, ad.price) },
+      priceText && { id: "priceType", label: "Preisart", find: () => $(S.post.priceType), apply: async (el) => !!(await choose(el, [ad.priceType, priceText])) },
+      ad.images?.length && { id: "images", label: `${ad.images.length} Bilder`, find: () => $(S.post.images), apply: (el) => injectFiles(el, ad.images, "anzeige") },
+      ...map.attrs.map((a) => ({
+        id: `attr-${a.name}`, label: a.label, refill: true, optional: a.name === "material",
+        find: () => attributeControl(a.name),
+        apply: async (el) => !!(await choose(el, a.wanted, a.fallback))
+      }))
+    ].filter(Boolean);
+
+    const render = (st) => {
+      if (!statusEl) return;
+      statusEl.replaceChildren(
+        ...[
+          st.done.length ? h("p", { class: "ak-small" }, `✓ ${st.done.join(", ")}`) : null,
+          st.open.length ? h("p", { class: "ak-small ak-muted" }, `Wartet auf: ${st.open.join(", ")}`) : null
+        ].filter(Boolean)
+      );
+    };
+    currentRun = AK.autofill.run(steps, { onChange: render });
+    render(currentRun.status());
+    if (!map.categoryId) toast("Kategorie bitte selbst wählen. Die restlichen Felder fülle ich aus, sobald sie erscheinen.", "warn");
   }
 
   async function initPostPage() {
@@ -120,21 +174,30 @@
     const { body } = AK.dom.panel("Aus Anzeigenkiste einfügen");
     const select = h("select", { class: "ak-input" },
       ads.map((a) => h("option", { value: a.id, selected: pending?.adId === a.id }, `${a.title} · ${formatPrice(a)}`)));
-    const hint = h("p", { class: "ak-muted" });
+    const hint = h("div", { class: "ak-muted ak-small" });
+    const status = h("div");
     const showHint = () => {
       const ad = ads.find((a) => a.id === select.value);
-      hint.textContent = ad?.category?.length ? `Kategorie: ${ad.category.join(" › ")}` : "";
+      if (!ad) return;
+      const map = AK.mapping.toKleinanzeigen(ad);
+      const d = ad.details || {};
+      const facts = [d.brand, d.size && `Gr. ${d.size}`, d.condition, d.color].filter(Boolean).join(" · ");
+      hint.replaceChildren(
+        ad.category?.length ? h("p", { class: "ak-muted ak-small" }, `${ad.source === "vinted" ? "Vinted" : "Bisher"}: ${ad.category.join(" › ")}`) : null,
+        map.categoryLabel ? h("p", { class: "ak-small" }, `→ Kleinanzeigen: ${map.categoryLabel}`) : null,
+        facts ? h("p", { class: "ak-muted ak-small" }, facts) : null
+      );
     };
     select.addEventListener("change", showHint);
     showHint();
     const btn = h("button", { class: "ak-btn ak-btn--primary", type: "button" }, "Formular ausfüllen");
-    btn.addEventListener("click", () => fillPostForm(ads.find((a) => a.id === select.value)));
-    body.append(select, hint, btn,
+    btn.addEventListener("click", () => fillPostForm(ads.find((a) => a.id === select.value), status));
+    body.append(select, hint, btn, status,
       h("p", { class: "ak-muted ak-small" }, "Abschicken musst du selbst. Anzeigenkiste klickt nie für dich auf „Anzeige aufgeben“."));
 
     if (pending) {
       const ad = ads.find((a) => a.id === pending.adId);
-      if (ad) fillPostForm(ad);
+      if (ad) fillPostForm(ad, status);
     }
   }
 

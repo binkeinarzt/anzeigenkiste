@@ -1,14 +1,35 @@
 // Hintergrund: lädt Bilder (CORS-frei dank host_permissions) und öffnet Tabs.
 const api = globalThis.browser ?? globalThis.chrome;
 
-async function toDataUrl(url) {
-  const res = await fetch(url, { credentials: "omit" });
-  if (!res.ok) throw new Error(`Bild ${res.status}`);
-  const blob = await res.blob();
+async function blobToDataUrl(blob) {
   const buf = new Uint8Array(await blob.arrayBuffer());
   let bin = "";
   for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
   return `data:${blob.type || "image/jpeg"};base64,${btoa(bin)}`;
+}
+
+// Alle Bilder als JPEG speichern: Kleinanzeigen und willhaben nehmen nur jpg, png und gif,
+// Vinted liefert aber WebP. Gleichzeitig auf max. 1600 px verkleinern.
+async function toJpeg(blob) {
+  if (blob.type === "image/jpeg" && blob.size < 1_500_000) return blob;
+  const bmp = await createImageBitmap(blob);
+  const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+  const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+  const canvas = new OffscreenCanvas(w, h);
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff"; // transparente PNGs/WebPs bekommen weißen statt schwarzen Hintergrund
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(bmp, 0, 0, w, h);
+  bmp.close?.();
+  return canvas.convertToBlob({ type: "image/jpeg", quality: 0.9 });
+}
+
+async function toDataUrl(url) {
+  const res = await fetch(url, { credentials: "omit" });
+  if (!res.ok) throw new Error(`Bild ${res.status}`);
+  let blob = await res.blob();
+  try { blob = await toJpeg(blob); } catch (e) { console.warn("[Anzeigenkiste] Umwandlung fehlgeschlagen", url, e); }
+  return blobToDataUrl(blob);
 }
 
 api.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

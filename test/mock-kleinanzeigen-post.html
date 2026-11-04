@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>Anzeige aufgeben | kleinanzeigen.de (Testnachbau)</title></head>
+<body>
+<!-- Nachbau des Kleinanzeigen-Formulars (Stand November 2026) mit dem Verhalten, das im echten Formular beobachtet wurde:
+     Kategorievorschläge nach dem Titel, Merkmale erst nach Kategoriewahl, Klapplisten mit role=combobox/listbox,
+     Marke als Suchfeld mit Vorschlägen, Zustand in einem <dialog> mit „Bestätigen“. -->
+<form id="f" onsubmit="return false">
+  <input type="file" multiple accept="image/*">
+  <input id="ad-title" name="title">
+  <div id="ad-category-suggestions"><a href="#">Wähle deine Kategorie</a></div>
+  <input type="hidden" name="categoryId" value="">
+  <div id="attrs"></div>
+  <textarea id="ad-description" name="description"></textarea>
+  <input id="ad-price-amount" name="priceAmount">
+  <input type="hidden" name="priceType" value="FIXED">
+  <button id="ad-price-type" type="button" role="combobox" aria-expanded="false" aria-controls="ad-price-type-menu">Festpreis</button>
+  <button type="button" id="submit-ad" onclick="window.__submitted = true">Anzeige aufgeben</button>
+</form>
+<script>
+  const OPTIONS = {
+    art: { kleidung_herren: ["Anzüge", "Hemden", "Hosen", "Jacken & Mäntel", "Jeans", "Pullover", "Shirts", "Weitere Herrenbekleidung"],
+           kleidung_damen: ["Hosen", "Jacken & Mäntel", "Pullover", "Röcke & Kleider", "Shirts & Tops", "Weitere Damenbekleidung"] },
+    groesse: { kleidung_herren: ["Einheitsgröße", "XS", "S", "M", "L", "XL", "XXL"],
+               kleidung_damen: ["Einheitsgröße", "XS (34)", "S (36)", "M (38)", "L (40)", "XL (42)"] },
+    color: ["Beige", "Blau", "Braun", "Grau", "Grün", "Pink", "Rosé", "Rot", "Schwarz", "Weiß", "Andere Farben"]
+  };
+  const BRANDS = ["Adidas", "Nike", "Tommy Hilfiger", "Wellensteyn", "Sonstige"];
+  const slug = (t) => t.toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/é/g, "e").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+  const $ = (s) => document.querySelector(s);
+
+  // Klappliste wie im echten Formular: Klick öffnet <ul role=listbox>, Klick auf Option setzt verstecktes Feld
+  function combobox(id, options, hidden) {
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.id = id; btn.setAttribute("role", "combobox");
+    btn.setAttribute("aria-expanded", "false"); btn.setAttribute("aria-controls", id + "-menu");
+    btn.textContent = "Bitte wählen";
+    btn.addEventListener("click", () => {
+      const open = btn.getAttribute("aria-expanded") === "true";
+      document.getElementById(id + "-menu")?.remove();
+      btn.setAttribute("aria-expanded", String(!open));
+      if (open) return;
+      const ul = document.createElement("ul");
+      ul.id = id + "-menu"; ul.setAttribute("role", "listbox");
+      ["Bitte wählen", ...options].forEach((t, i) => {
+        const li = document.createElement("li");
+        li.setAttribute("role", "option"); li.id = `${id}-menu-option-${i}`; li.textContent = t;
+        li.addEventListener("click", () => {
+          hidden.value = i === 0 ? "" : (id === "ad-price-type" ? { Festpreis: "FIXED", VB: "NEGOTIABLE", "Zu verschenken": "GIVE_AWAY" }[t] : slug(t));
+          btn.textContent = t; btn.setAttribute("aria-expanded", "false"); ul.remove();
+        });
+        ul.append(li);
+      });
+      document.body.append(ul);
+    });
+    return btn;
+  }
+
+  $("#ad-price-type").replaceWith(combobox("ad-price-type", ["Festpreis", "VB", "Zu verschenken"], $("input[name=priceType]")));
+
+  function renderAttributes(prefix) {
+    const box = $("#attrs");
+    box.replaceChildren();
+    const hidden = (name) => { const h = document.createElement("input"); h.type = "hidden"; h.name = `attributeMap[${prefix}.${name}]`; return h; };
+    for (const name of ["art", "groesse", "color"]) {
+      const wrap = document.createElement("div"); const h = hidden(name);
+      wrap.append(h, combobox(`${prefix}.${name}`, name === "color" ? OPTIONS.color : OPTIONS[name][prefix], h));
+      box.append(wrap);
+    }
+    // Marke: Suchfeld mit Vorschlägen
+    const bw = document.createElement("div"); const bh = hidden("brand");
+    const input = document.createElement("input");
+    input.id = `${prefix}.brand`; input.setAttribute("role", "combobox"); input.setAttribute("aria-controls", `${prefix}.brand-menu`);
+    input.addEventListener("input", () => {
+      document.getElementById(`${prefix}.brand-menu`)?.remove();
+      const q = input.value.toLowerCase(); if (!q) return;
+      const ul = document.createElement("ul"); ul.id = `${prefix}.brand-menu`; ul.setAttribute("role", "listbox");
+      [...BRANDS.filter((b) => b.toLowerCase().includes(q) && b !== "Sonstige"), "Sonstige"].forEach((b) => {
+        const li = document.createElement("li"); li.setAttribute("role", "option"); li.textContent = b;
+        li.addEventListener("click", () => { bh.value = slug(b); input.value = b; ul.remove(); });
+        ul.append(li);
+      });
+      document.body.append(ul);
+    });
+    bw.append(bh, input); box.append(bw);
+    // Zustand: Knopf öffnet Dialog
+    const cw = document.createElement("div"); const ch = hidden("condition");
+    const cb = document.createElement("button"); cb.type = "button"; cb.setAttribute("aria-haspopup", "dialog"); cb.textContent = "Zustand auswählen";
+    cb.addEventListener("click", () => {
+      const d = document.createElement("dialog");
+      d.innerHTML = [["new_with_tag", "Neu mit Etikett"], ["new", "Neu"], ["like_new", "Sehr Gut"], ["ok", "Gut"], ["alright", "In Ordnung"]]
+        .map(([v, t]) => `<label for="c-${v}"><input type="radio" id="c-${v}" name="cond" value="${v}">${t}</label>`).join("")
+        + `<button type="button" class="x">Abbrechen</button><button type="button" class="ok">Bestätigen</button>`;
+      document.body.append(d); d.show();
+      d.querySelector(".ok").addEventListener("click", () => { ch.value = d.querySelector("input:checked")?.value || ""; d.remove(); });
+      d.querySelector(".x").addEventListener("click", () => d.remove());
+    });
+    cw.append(cb, ch); box.append(cw);
+  }
+
+  // Kategorievorschläge nach dem Titel
+  $("#ad-title").addEventListener("change", () => {
+    const sug = $("#ad-category-suggestions");
+    sug.innerHTML = `<fieldset id="ad-category-picker" role="radiogroup">${[[160, "Mode & Beauty → Herrenbekleidung → Pullover"], [154, "Mode & Beauty → Damenbekleidung → Pullover"], [22, "Familie, Kind & Baby → Baby- & Kinderkleidung"]]
+      .map(([id, t]) => `<label for="ad-category-picker-${id}"><input id="ad-category-picker-${id}" type="radio" name="category-suggestions" value="${id}">${t}</label>`).join("")}</fieldset>`;
+    sug.querySelectorAll("input").forEach((r) => r.addEventListener("click", () => {
+      $("input[name=categoryId]").value = r.value;
+      renderAttributes({ 160: "kleidung_herren", 154: "kleidung_damen", 22: "baby_kinderkleidung" }[r.value]);
+    }));
+  });
+</script>
+</body></html>

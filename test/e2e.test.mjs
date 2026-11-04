@@ -2,7 +2,8 @@
 // Alle Plattform-Seiten werden abgefangen und durch nachgebaute Seiten ersetzt.
 // Getestet: Speichern auf Kleinanzeigen → Dashboard → Bearbeiten → Inserieren-Dialog (mehrere Plattformen)
 // → Formulare auf Kleinanzeigen, Vinted, Facebook, Quoka (mit Warten auf das Formular) → Textvorlagen
-// → Gegenrichtung: Artikel von Vinted in die Kiste holen.
+// → WebP-Bilder werden zu JPEG → Artikel von Vinted holen (Kategorie, Marke, Größe, Zustand, Farbe)
+// → damit Kleinanzeigen und willhaben ausfüllen, inkl. Feldern, die erst nach der Kategoriewahl erscheinen.
 // Aufruf: npm run test:e2e   (braucht Chrome + puppeteer-core)
 import puppeteer from "puppeteer-core";
 import { readFileSync } from "node:fs";
@@ -14,10 +15,8 @@ const html = (body) => `<!doctype html><html><head><meta charset="utf-8"></head>
 
 const PAGES = {
   "www.kleinanzeigen.de/s-anzeige/ikea-sofa/2912345678-88-1234": readFileSync(new URL("./fixture-ad.html", import.meta.url), "utf8"),
-  "www.kleinanzeigen.de/p-anzeige-aufgeben-schritt2.html": html(`<form>
-    <input id="postad-title"><textarea id="pstad-descrptn"></textarea>
-    <input id="micro-frontend-price"><select id="priceType"><option value="FIXED">Fest</option><option value="NEGOTIABLE">VB</option></select>
-    <input type="file" id="pictureupload-input" multiple accept="image/*"></form>`),
+  "www.kleinanzeigen.de/p-anzeige-aufgeben-schritt2.html": readFileSync(new URL("./mock-kleinanzeigen-post.html", import.meta.url), "utf8"),
+  "www.willhaben.at/iad/anzeigenaufgabe/marktplatz": readFileSync(new URL("./mock-willhaben-post.html", import.meta.url), "utf8"),
   "www.kleinanzeigen.de/m-nachrichten.html": html(`<div class="chat"><textarea name="message"></textarea></div>`),
   "www.vinted.de/items/new": html(`<input data-testid="title--input"><textarea data-testid="description--input"></textarea>
     <input data-testid="price-input--input"><input type="file" multiple accept="image/*">`),
@@ -27,14 +26,27 @@ const PAGES = {
     <label aria-label="Beschreibung"><span>Beschreibung</span><textarea></textarea></label>
     <input type="file" multiple accept="image/*,image/heif">`),
   "www.quoka.de/": html(`<h1>Quoka Startseite</h1><a href="#">Kostenlos inserieren</a>`),
-  "www.vinted.de/items/1234567890-lederjacke-vintage": html(`<h1>Lederjacke</h1>
-    <script type="application/ld+json">${JSON.stringify({
-      "@context": "https://schema.org", "@type": "Product", name: "Lederjacke Vintage Gr. M",
-      description: "Echtes Leder, kaum getragen.", category: "Herren > Jacken",
-      image: ["https://images1.vinted.net/t/abc/f800/1.jpeg"],
-      offers: { "@type": "Offer", price: "45.00", priceCurrency: "EUR" }
-    })}</script>`)
+  "www.vinted.de/items/10652437387-nike-pullover": vintedItem()
 };
+
+// Vinted-Artikel wie im Original: Daten als escapter JSON-String im Next.js-Payload
+function vintedItem() {
+  const data = {
+    item: {
+      price: { amount: "20.0", currency_code: "EUR" }, title: "Nike Pullover",
+      photos: ["01_AAA", "02_BBB", "03_CCC", "04_DDD"].map((id, i) => ({ id, url: `https://images1.vinted.net/t/${id}/f800/${"abcd"[i]}.webp?s=${i + 1}` })),
+      attributes: [
+        { code: "brand", data: { title: "Marke", value: "Nike" } },
+        { code: "size", data: { title: "Größe", value: "M / 38 / 10" } },
+        { code: "status", data: { title: "Zustand", value: "Neu, ohne Etikett" } },
+        { code: "color", data: { title: "Farbe", value: "Rosa" } }
+      ]
+    },
+    similar: { photos: [{ id: "09_OTHER", url: "https://images1.vinted.net/t/09_OTHER/f800/o.webp" }] }
+  };
+  return readFileSync(new URL("./mock-vinted-item.html", import.meta.url), "utf8")
+    .replace(/<!--PAYLOAD[^>]*-->/, `<script>self.__next_f.push([1, ${JSON.stringify(JSON.stringify(data))}])</script>`);
+}
 
 const browser = await puppeteer.launch({
   executablePath: process.env.CHROME || "/usr/bin/google-chrome",
@@ -111,18 +123,19 @@ try {
     for (const k of ["kleinanzeigen", "vinted", "facebook", "quoka"]) await AK.store.setPending(k, a.id);
   });
 
-  // 4) Kleinanzeigen-Formular
+  // 4) Kleinanzeigen-Formular (Nachbau des echten Formulars)
   const post = await fakePage("https://www.kleinanzeigen.de/p-anzeige-aufgeben-schritt2.html");
-  await post.waitForFunction(() => document.querySelector("#postad-title").value === "IKEA Sofa Kivik grau", { timeout: 8000 });
+  await post.waitForFunction(() => document.querySelector("#ad-title").value === "IKEA Sofa Kivik grau", { timeout: 8000 });
+  await post.waitForFunction(() => document.querySelector("input[name=priceType]").value === "NEGOTIABLE", { timeout: 8000 });
+  for (let i = 0; i < 30 && !(await post.$eval("input[type=file]", (e) => e.files.length)); i++) await new Promise((r) => setTimeout(r, 200));
   const ka = await post.evaluate(() => ({
-    desc: document.querySelector("#pstad-descrptn").value,
-    price: document.querySelector("#micro-frontend-price").value,
-    type: document.querySelector("#priceType").value,
-    files: document.querySelector("#pictureupload-input").files.length
+    desc: document.querySelector("#ad-description").value,
+    price: document.querySelector("#ad-price-amount").value,
+    files: document.querySelector("input[type=file]").files.length
   }));
   assert.ok(ka.desc.startsWith("Sehr guter Zustand."));
-  assert.deepEqual([ka.price, ka.type, ka.files], ["999", "NEGOTIABLE", 1]);
-  console.log("✓ Kleinanzeigen ausgefüllt (inkl. Bild)");
+  assert.deepEqual([ka.price, ka.files], ["999", 1]);
+  console.log("✓ Kleinanzeigen ausgefüllt (inkl. Bild und Preisart VB)");
 
   // 5) Vinted
   const vin = await fakePage("https://www.vinted.de/items/new");
@@ -154,17 +167,74 @@ try {
   assert.match(await msg.$eval("textarea", (e) => e.value), /noch verfügbar/);
   console.log("✓ Textvorlage eingefügt");
 
-  // 9) Gegenrichtung: Artikel von Vinted speichern
-  const item = await fakePage("https://www.vinted.de/items/1234567890-lederjacke-vintage");
+  // 9) WebP → JPEG: Kleinanzeigen lehnt WebP ab („ungültiges Format“)
+  const conv = await dash.evaluate(async () => {
+    const c = document.createElement("canvas"); c.width = 40; c.height = 30;
+    c.getContext("2d").fillRect(0, 0, 40, 30);
+    const webp = c.toDataURL("image/webp");
+    const [bg] = await chrome.runtime.sendMessage({ type: "fetchImages", urls: [webp] });
+    const page = await AK.dom.ensureJpeg(webp);
+    return { input: webp.slice(0, 15), bg: bg.slice(0, 15), page: page.slice(0, 15) };
+  });
+  assert.equal(conv.input, "data:image/webp");
+  assert.equal(conv.bg, "data:image/jpeg");
+  assert.equal(conv.page, "data:image/jpeg");
+  console.log("✓ WebP-Bilder werden als JPEG gespeichert und eingefügt");
+
+  // 10) Gegenrichtung: Artikel von Vinted speichern (mit allen Details)
+  const item = await fakePage("https://www.vinted.de/items/10652437387-nike-pullover");
   await item.waitForSelector(".ak-floating", { timeout: 8000 });
   await click(item, ".ak-floating");
   await item.waitForFunction(() => document.querySelector(".ak-floating")?.textContent.includes("Gespeichert"), { timeout: 15000 });
-  const imported = await dash.evaluate(async () => (await AK.store.getAdList()).find((a) => a.source === "vinted"));
-  assert.equal(imported.title, "Lederjacke Vintage Gr. M");
-  assert.equal(imported.price, "45");
-  assert.deepEqual(imported.category, ["Herren", "Jacken"]);
-  assert.equal(imported.sourceId, "vinted:1234567890");
-  console.log("✓ Artikel von Vinted in die Kiste geholt");
+  const vad = await dash.evaluate(async () => (await AK.store.getAdList()).find((a) => a.source === "vinted"));
+  assert.equal(vad.title, "Nike Pullover");
+  assert.equal(vad.price, "20");
+  assert.equal(vad.description, "Kaum getragen, wie neu.\nNichtraucherhaushalt.");
+  assert.deepEqual(vad.category, ["Damen", "Kleidung", "Pullover & Strickpullover", "Hoodies & Sweaters"]);
+  assert.deepEqual(vad.details, { brand: "Nike", size: "M / 38 / 10", condition: "Neu, ohne Etikett", color: "Rosa", material: "" });
+  assert.equal(vad.sourceId, "vinted:10652437387");
+  console.log("✓ Artikel von Vinted mit Kategorie, Marke, Größe, Zustand und Farbe geholt");
+
+  // 11) Vinted-Artikel auf Kleinanzeigen: Kategorie und alle Merkmale nach Vinted
+  await dash.evaluate(async (id) => { await AK.store.setPending("kleinanzeigen", id); await AK.store.setPending("willhaben", id); }, vad.id);
+  const post2 = await fakePage("https://www.kleinanzeigen.de/p-anzeige-aufgeben-schritt2.html");
+  const v = (n) => post2.$eval(`input[name='${n}']`, (e) => e.value).catch(() => null);
+  for (let i = 0; i < 60 && !(await v("attributeMap[kleidung_damen.color]")); i++) await new Promise((r) => setTimeout(r, 300));
+  const ka2 = {
+    cat: await v("categoryId"), art: await v("attributeMap[kleidung_damen.art]"), size: await v("attributeMap[kleidung_damen.groesse]"),
+    color: await v("attributeMap[kleidung_damen.color]"), brand: await v("attributeMap[kleidung_damen.brand]"),
+    cond: await v("attributeMap[kleidung_damen.condition]"), submitted: await post2.evaluate(() => !!window.__submitted)
+  };
+  assert.deepEqual(ka2, { cat: "154", art: "pullover", size: "m_38", color: "rose", brand: "nike", cond: "new", submitted: false });
+  console.log("✓ Kleinanzeigen: Damenbekleidung › Pullover, M, Nike, Rosé, Neu – nichts abgeschickt");
+
+  // 12) willhaben: Beschreibung im Editor, Felder nach Kategoriewahl, Preis nachgefüllt, Fenster richtig gespeichert
+  const wh = await fakePage("https://www.willhaben.at/iad/anzeigenaufgabe/marktplatz?adTypeId=67&productId=67");
+  let whs = null;
+  for (let i = 0; i < 60; i++) {
+    whs = await wh.evaluate(() => ({
+      cat: [...document.querySelectorAll("input[name='category-suggestion']")].findIndex((r) => r.checked),
+      model: window.__editorModel(),
+      price: document.querySelector("#price").value,
+      brand: window.__modal.BRAND_CLOTHING || null,
+      size: document.querySelector("input[name='CLOTHING_SIZE_FEMALE-radio-group']:checked")?.value || null,
+      cond: document.querySelector("input[name='Zustand-radio-group']:checked")?.value || null,
+      color: document.querySelector("[data-testid='COLOR-button']")?.textContent || null,
+      draftSaved: !!window.__draftSaved, submitted: !!window.__submitted
+    }));
+    if (whs.color === "Rosa" && whs.price && whs.brand && whs.size && whs.cond) break;
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  assert.ok(whs.cat >= 1, "willhaben: Damen-Kategorie gewählt");
+  assert.equal(whs.model, "Kaum getragen, wie neu.\nNichtraucherhaushalt.");
+  assert.equal(whs.price, "20", "willhaben: Preis nach Kategoriewechsel nachgefüllt");
+  assert.equal(whs.brand, "Nike");
+  assert.equal(whs.size, "38");
+  assert.equal(whs.cond, "neu");
+  assert.equal(whs.color, "Rosa");
+  assert.equal(whs.draftSaved, false, "willhaben: Entwurf darf nicht gespeichert werden");
+  assert.equal(whs.submitted, false);
+  console.log("✓ willhaben: Text im Editor, Damen-Kategorie, Nike, 38, Neu, Rosa, Preis – kein Entwurf, nichts abgeschickt");
 
   console.log("\nAlle E2E-Tests bestanden.");
 } finally {

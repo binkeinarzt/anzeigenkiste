@@ -24,14 +24,18 @@
       actionBar: ["#viewad-action-watchlist", "#viewad-contact", ".viewad-actions", "#viewad-price"]
     },
 
-    // Anzeige aufgeben (/p-anzeige-aufgeben*.html)
+    // Anzeige aufgeben (/p-anzeige-aufgeben-schritt2.html), Formular-Stand November 2026
     post: {
-      title: ["#postad-title", "input[name='title']", "input[id*='title' i]"],
-      description: ["#pstad-descrptn", "textarea[name='description']", "textarea"],
-      price: ["#micro-frontend-price", "#pstad-price", "input[name='priceAmount']", "input[id*='price' i]"],
-      priceType: ["#micro-frontend-price-type", "#priceType", "select[name='priceType']"],
-      zip: ["#pstad-zip", "input[name='zipCode']"],
-      images: ["#pictureupload-input", "input[type='file'][accept*='image']", "input[type='file']"]
+      title: ["#ad-title", "input[name='title']", "#postad-title"],
+      description: ["#ad-description", "textarea[name='description']", "#pstad-descrptn"],
+      price: ["#ad-price-amount", "input[name='priceAmount']", "#pstad-price"],
+      priceType: ["#ad-price-type", "select[name='priceType']", "#priceType"],
+      images: ["input[type='file'][accept*='image']", "input[type='file']"],
+      // Kategorievorschläge erscheinen nach Eingabe des Titels als Radio-Buttons (value = Kategorie-ID)
+      categoryPicker: ["#ad-category-picker", "fieldset[aria-label*='Kategorie']"],
+      categoryInput: ["input[name='categoryId']"],
+      // Merkmale: verstecktes Feld attributeMap[<präfix>.<name>], Bedienelement mit id <präfix>.<name>
+      attributeHidden: "input[name^='attributeMap[']"
     },
 
     // Meine Anzeigen (/m-meine-anzeigen.html)

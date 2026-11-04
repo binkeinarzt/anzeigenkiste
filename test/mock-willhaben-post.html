@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>Marktplatz Anzeige aufgeben - willhaben (Testnachbau)</title></head>
+<body>
+<!-- Nachbau des willhaben-Formulars (Stand November 2026) mit beobachtetem Verhalten:
+     Beschreibung in einem Quill-artigen Editor, der nur Einfügen/Eintippen übernimmt;
+     Kategorievorschläge nach dem Titel; Merkmale erst nach Kategoriewahl;
+     Preis wird beim Kategoriewechsel geleert; Farbe und „Alle Marken“ in Fenstern;
+     „Entwurf speichern“ der Seite hat dieselbe data-testid wie „Speichern“ im Fenster. -->
+<form onsubmit="return false">
+  <input type="file" id="imagePicker" name="imagePicker" multiple accept="image/*">
+  <label for="price">Verkaufspreis</label><input id="price" name="price">
+  <label for="heading">Titel</label><input id="heading" name="heading">
+  <div id="cat"></div>
+  <div class="ql-container"><div class="ql-editor ql-blank" contenteditable="true"><p><br></p></div></div>
+  <div id="attrs"></div>
+  <button type="button" data-testid="save-button" onclick="window.__draftSaved = true">Entwurf speichern</button>
+  <button type="submit" data-testid="send-button" onclick="window.__submitted = true">Weiter</button>
+</form>
+<script>
+  const $ = (s) => document.querySelector(s);
+  // Quill übernimmt nur Einfügen (paste); direktes Setzen von textContent wird beim nächsten Rendern verworfen
+  const editor = $(".ql-editor");
+  let model = "";
+  editor.addEventListener("paste", (e) => {
+    e.preventDefault();
+    model = e.clipboardData.getData("text/plain");
+    editor.innerHTML = model.split("\n").map((l) => `<p>${l || "<br>"}</p>`).join("");
+  });
+  new MutationObserver(() => {
+    const shown = editor.innerText.replace(/\s+/g, " ").trim();
+    if (shown !== model.replace(/\s+/g, " ").trim() && !editor.dataset.syncing) {
+      editor.dataset.syncing = "1";
+      editor.innerHTML = model ? model.split("\n").map((l) => `<p>${l || "<br>"}</p>`).join("") : "<p><br></p>";
+      delete editor.dataset.syncing;
+    }
+  }).observe(editor, { childList: true, subtree: true, characterData: true });
+  window.__editorModel = () => model;
+
+  function radios(key, values) {
+    return `<div>${values.map(([v, t]) => `<input type="radio" id="${key}-${v}" name="${key}-radio-group" value="${v}" data-testid="${key}-input-${v}"><label for="${key}-${v}">${t}</label>`).join("")}</div>`;
+  }
+
+  function modal(key, values, multi) {
+    const m = document.createElement("div");
+    m.setAttribute("data-testid", `attribute-modal-${key}`);
+    m.innerHTML = `<button type="button" data-testid="attribute-modal-${key}-close-button">x</button>`
+      + (multi ? "" : `<input data-testid="attributeValueFilterInput">`)
+      + values.map(([v, t]) => `<button type="submit" data-testid="attribute-value-${v}">${t}</button>`).join("")
+      + `<button type="button" data-testid="abort-button">Abbrechen</button><button type="button" data-testid="save-button">Speichern</button>`;
+    document.body.append(m);
+    let chosen = null;
+    m.querySelectorAll("[data-testid^='attribute-value-']").forEach((b) => b.addEventListener("click", () => {
+      chosen = b.textContent;
+      if (!multi) { window.__modal[key] = chosen; m.remove(); renderBrandRadio(chosen); }
+    }));
+    m.querySelector("[data-testid='save-button']").addEventListener("click", () => {
+      window.__modal[key] = chosen; m.remove();
+      if (key === "COLOR") $("[data-testid='COLOR-button']").textContent = chosen || "Bitte Farbe auswählen...";
+    });
+    m.querySelector("[data-testid='abort-button']").addEventListener("click", () => m.remove());
+  }
+  window.__modal = {};
+
+  function renderBrandRadio(name) {
+    const v = name.toUpperCase().replace(/[^A-Z]+/g, "_");
+    $("#brand-radios").innerHTML = radios("BRAND_CLOTHING", [[v, name]]);
+    $(`#BRAND_CLOTHING-${v}`).checked = true;
+  }
+
+  function renderAttributes(female) {
+    $("#price").value = ""; // willhaben leert den Preis beim Kategoriewechsel
+    const sizes = female ? [["34", "34 / XS"], ["36", "36 / XS"], ["38", "38 / S"], ["40", "40 / M"], ["42", "42 / L"]]
+                         : [["46", "46 / S"], ["48", "48 / M"], ["50", "50 / L"], ["52", "52 / L"], ["54", "54 / XL"]];
+    $("#attrs").innerHTML =
+      `<label>Marke</label><div id="brand-radios">${radios("BRAND_CLOTHING", [["ADIDAS", "Adidas"]])}</div>`
+      + `<button type="button" data-testid="BRAND_CLOTHING-button">Alle Marken anzeigen</button>`
+      + radios(female ? "CLOTHING_SIZE_FEMALE" : "CLOTHING_SIZE_MALE", sizes)
+      + `<button type="button" data-testid="COLOR-button">Bitte Farbe auswählen...</button>`
+      + radios("Zustand", [["neu", "Neu"], ["MintCondition", "Neuwertig"], ["gebraucht", "Gebraucht"], ["defekt", "Defekt"]]);
+    $("[data-testid='BRAND_CLOTHING-button']").addEventListener("click", () =>
+      modal("BRAND_CLOTHING", [["ADIDAS", "Adidas"], ["NIKE", "Nike"], ["TOMMY_HILFIGER", "Tommy Hilfiger"], ["SONSTIGE", "Sonstige"]], false));
+    $("[data-testid='COLOR-button']").addEventListener("click", () =>
+      modal("COLOR", [["MULTI_COLOR", "Mehrfarbig"], ["BLACK", "Schwarz"], ["BLUE", "Blau"], ["ROSE", "Rosa"], ["PURPLE", "Violett"], ["WHITE", "Weiß"]], true));
+  }
+
+  $("#heading").addEventListener("change", () => {
+    const sugg = [["Mode / Accessoires", "Herrenmode", "Pullover / Westen", "Sweatshirts"],
+                  ["Mode / Accessoires", "Damenmode", "Pullover / Westen", "Sweatshirts"],
+                  ["Mode / Accessoires", "Damenmode", "Pullover / Westen", "Kapuzenpullover"]];
+    $("#cat").innerHTML = sugg.map((s, i) => `<input type="radio" id="category-suggestion-${i}" name="category-suggestion" data-testid="category-suggestion-${i}"><label for="category-suggestion-${i}">${s.map((x) => `<span>${x}</span>`).join("")}</label>`).join("");
+    document.querySelectorAll("[name='category-suggestion']").forEach((r, i) => r.addEventListener("click", () => renderAttributes(i > 0)));
+  });
+</script>
+</body></html>

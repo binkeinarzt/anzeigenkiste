@@ -31,12 +31,33 @@
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // Setzt den Wert so, dass auch Frameworks (React, Vue) die Änderung mitbekommen.
+  // Text-Editoren (Quill auf willhaben, Draft.js, ProseMirror) ignorieren direktes Setzen von
+  // textContent. Sie verarbeiten aber ein Einfügen aus der Zwischenablage, also simulieren wir das.
+  function setEditorText(el, value) {
+    el.focus();
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    const dt = new DataTransfer();
+    dt.setData("text/plain", value);
+    el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+    const text = () => el.innerText.replace(/\s+/g, " ").trim();
+    const want = value.replace(/\s+/g, " ").trim();
+    if (text() !== want) document.execCommand("insertText", false, value);
+    if (text() !== want) {
+      el.innerHTML = value.split("\n").map((l) => `<p>${l.replace(/&/g, "&amp;").replace(/</g, "&lt;") || "<br>"}</p>`).join("");
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    return text() === want;
+  }
+
   function setValue(el, value) {
     if (!el || value == null) return false;
+    if (el.isContentEditable) return setEditorText(el, String(value));
     el.focus();
-    if (el.isContentEditable) {
-      el.textContent = value;
-    } else {
+    {
       const proto = el instanceof HTMLTextAreaElement
         ? HTMLTextAreaElement.prototype
         : el instanceof HTMLSelectElement
@@ -74,16 +95,39 @@
     const bin = atob(b64);
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    const ext = mime.split("/")[1] === "png" ? "png" : mime.split("/")[1] === "webp" ? "webp" : "jpg";
+    const ext = mime === "image/png" ? "png" : "jpg";
     return new File([bytes], `${name}.${ext}`, { type: mime });
   }
 
+  // Wandelt WebP, AVIF usw. in JPEG um. Ältere Anzeigen in der Kiste können noch WebP enthalten,
+  // und Kleinanzeigen/willhaben lehnen das ab („ungültiges Format“).
+  function ensureJpeg(dataUrl) {
+    if (/^data:image\/(jpeg|png);/.test(dataUrl)) return Promise.resolve(dataUrl);
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.naturalWidth * scale);
+        c.height = Math.round(img.naturalHeight * scale);
+        const ctx = c.getContext("2d");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL("image/jpeg", 0.9));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
   // Legt Bilder in ein <input type="file">, als hätte der Nutzer sie ausgewählt.
-  function injectFiles(input, dataUrls, baseName = "bild") {
+  async function injectFiles(input, dataUrls, baseName = "bild") {
     if (!input || !dataUrls?.length) return false;
     const dt = new DataTransfer();
     const max = input.multiple ? dataUrls.length : 1;
-    dataUrls.slice(0, max).forEach((u, i) => dt.items.add(dataUrlToFile(u, `${baseName}-${i + 1}`)));
+    const ready = await Promise.all(dataUrls.slice(0, max).map(ensureJpeg));
+    ready.forEach((u, i) => dt.items.add(dataUrlToFile(u, `${baseName}-${i + 1}`)));
     input.files = dt.files;
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
@@ -151,5 +195,5 @@
     return `${ad.price} €${ad.priceType === "NEGOTIABLE" ? " VB" : ""}`;
   }
 
-  AK.dom = { $, $$, waitFor, sleep, setValue, insertText, dataUrlToFile, injectFiles, downloadDataUrl, copy, h, toast, panel, formatPrice };
+  AK.dom = { $, $$, waitFor, sleep, setValue, setEditorText, insertText, dataUrlToFile, ensureJpeg, injectFiles, downloadDataUrl, copy, h, toast, panel, formatPrice };
 })();

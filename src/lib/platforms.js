@@ -36,11 +36,11 @@
     willhaben: {
       label: "willhaben",
       hosts: /(^|\.)willhaben\.at$/,
-      start: { de: "https://www.willhaben.at/iad/anzeigenaufgabe", at: "https://www.willhaben.at/iad/anzeigenaufgabe" },
+      start: { de: "https://www.willhaben.at/iad/anzeigenaufgabe/marktplatz?adTypeId=67&productId=67", at: "https://www.willhaben.at/iad/anzeigenaufgabe/marktplatz?adTypeId=67&productId=67" },
       fields: {
-        title: ["input[name='heading']", "input[data-testid*='heading']", "input[name='title']"],
-        description: ["textarea[name='description']", "[contenteditable='true']"],
-        price: ["input[name='price']", "input[data-testid*='price']"]
+        title: ["#heading", "input[name='heading']"],
+        description: [".ql-editor", "[contenteditable='true']"],
+        price: ["#price", "input[name='price']"]
       },
       item: /^\/iad\/kaufen-und-verkaufen\/d\//
     },
